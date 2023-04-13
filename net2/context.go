@@ -3,7 +3,7 @@ package net2
 import (
 	"bytes"
 	"fmt"
-	"mybase"
+	"github.com/guliping-hz/mybase"
 	"strconv"
 	"sync"
 	"time"

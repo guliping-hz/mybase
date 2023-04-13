@@ -3,8 +3,8 @@ package net2
 import (
 	"bytes"
 	"fmt"
+	"github.com/guliping-hz/mybase"
 	"io"
-	"mybase"
 	"net"
 	"runtime"
 	"runtime/debug"

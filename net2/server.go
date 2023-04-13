@@ -2,7 +2,7 @@ package net2
 
 import (
 	"fmt"
-	"mybase"
+	"github.com/guliping-hz/mybase"
 	"net"
 	"sync"
 	"time"

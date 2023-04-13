@@ -6,7 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"mybase"
+	"github.com/guliping-hz/mybase"
 	"strconv"
 	"time"
 )
@@ -35,10 +35,10 @@ var chanSig = make(chan *GovReportData)
 var datas GovReportDatas
 var chanEnd = make(chan bool)
 
-//是否开启调试版署接口
+// 是否开启调试版署接口
 const DebugReport = false
 
-//是否开启游戏上报功能
+// 是否开启游戏上报功能
 const Report = true
 
 func PostReportData(data *GovReportData) {

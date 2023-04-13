@@ -2,7 +2,7 @@ package net2
 
 import (
 	"github.com/gorilla/websocket"
-	"mybase"
+	"github.com/guliping-hz/mybase"
 	"net"
 	"time"
 )
