@@ -1,4 +1,4 @@
-module mybase
+module github.com/guliping-hz/mybase
 
 go 1.16
 
@@ -12,5 +12,5 @@ require (
 
 require (
 	github.com/go-redis/redis/v8 v8.11.5
-	github.com/google/go-cmp v0.5.6 // indirect
+	golang.org/x/net v0.0.0-20210428140749-89ef3d95e781
 )
