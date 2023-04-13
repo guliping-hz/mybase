@@ -1,4 +1,4 @@
-package report
+package mybase
 
 import (
 	"crypto/sha256"
@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/guliping-hz/mybase"
 	"strconv"
 	"time"
 )
@@ -69,7 +68,7 @@ func reportData() {
 		return
 	}
 
-	cipherBytes, err := mybase.AESGCMEncrypt(SmAppSecret, string(bytes))
+	cipherBytes, err := AESGCMEncrypt(SmAppSecret, string(bytes))
 	if err != nil {
 		return
 	}
@@ -78,11 +77,11 @@ func reportData() {
 	signByte := sha256.Sum256([]byte(plainText))
 	heads["sign"] = hex.EncodeToString(signByte[:])
 
-	ret, err := mybase.HttpPost(SmlUrl, body, heads)
+	ret, err := HttpPost(SmlUrl, body, heads)
 	if err != nil {
 		return
 	}
-	mybase.I("gov report result=%s", ret)
+	I("gov report result=%s", ret)
 }
 
 func InitReport(appId, bizId, appSecret, url string) {

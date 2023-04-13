@@ -1,12 +1,15 @@
 package mybase
 
-import "errors"
+import (
+	"errors"
+	"github.com/guliping-hz/mybase/net2"
+)
 
 var (
-	ErrNoDB      = errors.New("db not init")
-	ErrNoImp     = errors.New("no implementation")
-	ErrNoRedis   = errors.New("redis not init")
-	ErrParam     = errors.New("param error")
+	ErrNoDB    = errors.New("db not init")
+	ErrNoImp   = errors.New("no implementation")
+	ErrNoRedis = errors.New("redis not init")
+
 	ErrParse     = errors.New("parse error")
 	ErrNoData    = errors.New("database/redis no data")
 	ErrData      = errors.New("redis data error")
@@ -15,10 +18,13 @@ var (
 	ErrAbort     = errors.New("abort")
 	ErrTryMax    = errors.New("try max limit") //重试次数已达上限
 	ErrOccur     = errors.New("err occur")     //发生了一次错误
-	ErrBuffer    = errors.New("buffer error")
 	ErrInner     = errors.New("inner error")
-	ErrOOM       = errors.New("oom")
-	ErrTimeout   = errors.New("time out")
-	ErrClose     = errors.New("closed by the peer")
 	ErrThird     = errors.New("third platform error")
+
+	//net2
+	ErrTimeout = net2.ErrTimeout
+	ErrParam   = net2.ErrParam
+	ErrBuffer  = net2.ErrBuffer
+	ErrClose   = net2.ErrClose
+	ErrOOM     = net2.ErrOOM
 )

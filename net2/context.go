@@ -3,7 +3,7 @@ package net2
 import (
 	"bytes"
 	"fmt"
-	"github.com/guliping-hz/mybase"
+	"reflect"
 	"strconv"
 	"sync"
 	"time"
@@ -84,7 +84,7 @@ func (c *Context) GetEx(key string, output interface{}) bool {
 	if !ok {
 		return false
 	}
-	mybase.SameTransfer(dataI, output)
+	SameTransfer(dataI, output)
 	return true
 }
 
@@ -142,4 +142,26 @@ func (c *Context) GetFloat64(key string) (f64 float64) {
 		f64, _ = val.(float64)
 	}
 	return
+}
+
+func SameTransfer(input, outputPtr interface{}) {
+	var vOE reflect.Value
+	vO := reflect.ValueOf(outputPtr)
+	if vO.Kind() != reflect.Ptr {
+		panic("outputPtr must be ptr")
+	}
+	vOE = vO.Elem()
+
+	var vIE reflect.Value
+	vI := reflect.ValueOf(input)
+	if vI.Kind() == reflect.Ptr {
+		vIE = vI.Elem()
+	} else {
+		vIE = vI
+	}
+
+	if !vIE.CanConvert(vOE.Type()) {
+		panic(fmt.Sprintf("the input and output not the same type %s != %s", vIE.Type().Name(), vOE.Type()))
+	}
+	vOE.Set(vIE)
 }

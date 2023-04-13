@@ -2,7 +2,6 @@ package net2
 
 import (
 	"github.com/gorilla/websocket"
-	"github.com/guliping-hz/mybase"
 	"net"
 	"time"
 )
@@ -63,7 +62,7 @@ func (c *ClientWSocket) recvEx() ([]byte, error) {
 // @msgType TextMessage or BinaryMessage
 func (c *ClientWSocket) Connect(addr string, msgType int, ttl time.Duration, OnSocket OnSocket, ddb DataDecodeBase) error {
 	if OnSocket == nil {
-		return mybase.ErrParam
+		return ErrParam
 	}
 
 	c.Init(ddb, ttl, 0, OnSocket, c, c)
@@ -77,7 +76,7 @@ func (c *ClientWSocket) ReConnect(addr string) error {
 	c.conn, _, err = websocket.DefaultDialer.Dial(addr, nil)
 	if err != nil {
 		//if err1, ok := err.(*net.OpError); ok && err1.Timeout() {
-		//	return mybase.ErrTimeout
+		//	return ErrTimeout
 		//}
 		return err
 	}

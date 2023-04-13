@@ -2,7 +2,7 @@ package net2
 
 import (
 	"fmt"
-	"github.com/guliping-hz/mybase"
+	"log"
 	"net"
 	"sync"
 	"time"
@@ -86,7 +86,7 @@ func (s *ServerSocket) Shutdown() {
 
 func (s *ServerSocket) Listen() error {
 	if s.onSocket == nil {
-		return mybase.ErrParam
+		return ErrParam
 	}
 	//获取服务器监听ip地址
 	ip, err := net.ResolveTCPAddr("", s.listenAddress)
@@ -107,7 +107,7 @@ func (s *ServerSocket) Listen() error {
 func (s *ServerSocket) close() {
 	err := s.listener.Close()
 	if err != nil {
-		mybase.E("Close error=%v", err.Error())
+		log.Printf("Close error=%v\n", err.Error())
 	}
 	s.onSocket.OnServerClose()
 }

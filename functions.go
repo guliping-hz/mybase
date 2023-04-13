@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"github.com/guliping-hz/mybase/net2"
 	"github.com/mitchellh/mapstructure"
 	"io/ioutil"
 	"math"
@@ -223,25 +224,7 @@ func DecodeEx(input, outputPtr interface{}, weakly bool) error {
 用于 *Struct{} => interface{} = > *Struct{}
 */
 func SameTransfer(input, outputPtr interface{}) {
-	var vOE reflect.Value
-	vO := reflect.ValueOf(outputPtr)
-	if vO.Kind() != reflect.Ptr {
-		panic("outputPtr must be ptr")
-	}
-	vOE = vO.Elem()
-
-	var vIE reflect.Value
-	vI := reflect.ValueOf(input)
-	if vI.Kind() == reflect.Ptr {
-		vIE = vI.Elem()
-	} else {
-		vIE = vI
-	}
-
-	if !vIE.CanConvert(vOE.Type()) {
-		panic(fmt.Sprintf("the input and output not the same type %s != %s", vIE.Type().Name(), vOE.Type()))
-	}
-	vOE.Set(vIE)
+	net2.SameTransfer(input, outputPtr)
 }
 
 func EasyGetMap(dict *sync.Map, key interface{}, output interface{}) bool {

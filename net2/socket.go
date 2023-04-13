@@ -2,7 +2,6 @@ package net2
 
 import (
 	"fmt"
-	"github.com/guliping-hz/mybase"
 	"net"
 	"time"
 )
@@ -86,7 +85,7 @@ func (c *ClientSocket) ConnectHostPort(host string, port uint16, Ttl time.Durati
 
 func (c *ClientSocket) Connect(addr string, ttl time.Duration, OnSocket OnSocket, ddb DataDecodeBase) error {
 	if OnSocket == nil {
-		return mybase.ErrParam
+		return ErrParam
 	}
 
 	c.Init(ddb, ttl, 0, OnSocket, c, c)
@@ -98,7 +97,7 @@ func (c *ClientSocket) ReConnect(addr string) error {
 	c.conn, err = net.DialTimeout("tcp", addr, c.context.ttl)
 	if err != nil {
 		if CheckTimeout(err) {
-			return mybase.ErrTimeout
+			return ErrTimeout
 		}
 		return err
 	}

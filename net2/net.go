@@ -2,9 +2,10 @@ package net2
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
-	"github.com/guliping-hz/mybase"
 	"io"
+	"log"
 	"net"
 	"runtime"
 	"runtime/debug"
@@ -12,6 +13,14 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+)
+
+var (
+	ErrTimeout = errors.New("time out")
+	ErrParam   = errors.New("param error")
+	ErrBuffer  = errors.New("buffer error")
+	ErrClose   = errors.New("closed by the peer")
+	ErrOOM     = errors.New("oom")
 )
 
 /*
@@ -170,7 +179,7 @@ func (c *ClientBase) SafeClose(byLocalNotRemote bool) {
 	c.Status.ChangeStatus(StatusShutdown, nil)
 	err := c.context.socket.Close()
 	if err != nil {
-		mybase.E("Close error=%v", err.Error())
+		//mybase.E("Close error=%v", err.Error())
 	}
 
 	close(c.context.chanStop)
@@ -249,7 +258,7 @@ func (c *ClientBase) Send(buf []byte) bool {
 //}
 
 func (c *ClientBase) IsClosedByPeer() bool {
-	return c.Status.err == mybase.ErrClose
+	return c.Status.err == ErrClose
 }
 
 func (c *ClientBase) CloseWithErr(err error, stack []byte, check bool) {
@@ -287,9 +296,9 @@ func (c *ClientBase) process() error {
 
 		lenPackage := c.context.dataDecoder.GetPackageLen(c.context.readDB.Bytes())
 		if lenPackage == 0 { //异常包
-			mybase.W("lenPackage=0 readLen=%d,lenHead=%d", readLen, lenHead)
+			//mybase.W("lenPackage=0 readLen=%d,lenHead=%d", readLen, lenHead)
 			c.context.readDB.Reset()
-			return mybase.ErrBuffer
+			return ErrBuffer
 		}
 
 		lenFull := lenHead + lenPackage
@@ -350,7 +359,7 @@ func (c *ClientBase) recvRoutine() {
 	defer func() {
 		p := recover()
 		if err, ok := p.(error); ok {
-			mybase.W("CloseWithErr err=%s", err)
+			log.Printf("CloseWithErr err=%s\n", err)
 			//异常报错导致的断开连接。。。
 			c.CloseWithErr(err, debug.Stack(), true)
 		}
@@ -379,7 +388,7 @@ func (c *ClientBase) recvRoutine() {
 						表示服务器发送数据，客户端已经close,这个经过测试只有在windows上才会出现。linux试了很多遍都是返回io.EOF错误
 						解决办法就是客户端发送数据的时候需要wait一下，然后再close，这样close的结果就是2了
 				*/
-				c.CloseWithErr(mybase.ErrClose, nil, true)
+				c.CloseWithErr(ErrClose, nil, true)
 			} else if ok && err1 != nil && err1.Timeout() {
 				c.CloseTimeout()
 			} else {
@@ -391,7 +400,7 @@ func (c *ClientBase) recvRoutine() {
 
 		_, err = c.context.readDB.Write(buffer)
 		if err != nil {
-			c.CloseWithErr(mybase.ErrOOM, nil, true) //无法把buffer全部塞进去，多半是没有内存了。
+			c.CloseWithErr(ErrOOM, nil, true) //无法把buffer全部塞进去，多半是没有内存了。
 			return
 		}
 
