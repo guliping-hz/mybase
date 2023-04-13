@@ -2,7 +2,6 @@ package mybase
 
 import (
 	"errors"
-	"github.com/guliping-hz/mybase/net2"
 )
 
 var (
@@ -20,11 +19,11 @@ var (
 	ErrOccur     = errors.New("err occur")     //发生了一次错误
 	ErrInner     = errors.New("inner error")
 	ErrThird     = errors.New("third platform error")
-
+	ErrParam     = errors.New("param error")
 	//net2
-	ErrTimeout = net2.ErrTimeout
-	ErrParam   = net2.ErrParam
-	ErrBuffer  = net2.ErrBuffer
-	ErrClose   = net2.ErrClose
-	ErrOOM     = net2.ErrOOM
+	//ErrTimeout = net2.ErrTimeout
+	//ErrParam   = net2.ErrParam
+	//ErrBuffer  = net2.ErrBuffer
+	//ErrClose   = net2.ErrClose
+	//ErrOOM     = net2.ErrOOM
 )

@@ -3,7 +3,6 @@ package net2
 import (
 	"bytes"
 	"fmt"
-	"reflect"
 	"strconv"
 	"sync"
 	"time"
@@ -79,14 +78,14 @@ func (c *Context) Get(key string) (value interface{}, exists bool) {
 	return
 }
 
-func (c *Context) GetEx(key string, output interface{}) bool {
-	dataI, ok := c.Get(key)
-	if !ok {
-		return false
-	}
-	SameTransfer(dataI, output)
-	return true
-}
+//func (c *Context) GetEx(key string, output interface{}) bool {
+//	dataI, ok := c.Get(key)
+//	if !ok {
+//		return false
+//	}
+//	SameTransfer(dataI, output)
+//	return true
+//}
 
 // GetString returns the value associated with the key as a string.
 func (c *Context) GetString(key string) (s string) {
@@ -142,26 +141,4 @@ func (c *Context) GetFloat64(key string) (f64 float64) {
 		f64, _ = val.(float64)
 	}
 	return
-}
-
-func SameTransfer(input, outputPtr interface{}) {
-	var vOE reflect.Value
-	vO := reflect.ValueOf(outputPtr)
-	if vO.Kind() != reflect.Ptr {
-		panic("outputPtr must be ptr")
-	}
-	vOE = vO.Elem()
-
-	var vIE reflect.Value
-	vI := reflect.ValueOf(input)
-	if vI.Kind() == reflect.Ptr {
-		vIE = vI.Elem()
-	} else {
-		vIE = vI
-	}
-
-	if !vIE.CanConvert(vOE.Type()) {
-		panic(fmt.Sprintf("the input and output not the same type %s != %s", vIE.Type().Name(), vOE.Type()))
-	}
-	vOE.Set(vIE)
 }
