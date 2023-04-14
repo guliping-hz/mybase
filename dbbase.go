@@ -840,6 +840,10 @@ func (d *DBMgrBase) RedisKeys(pattern string) ([]string, error) {
 
 // 遍历key，每次遍历count个key
 func (d *DBMgrBase) RedisScan(pattern string, count int64) (keys []string, err error) {
+	return d.RedisScanLimit(pattern, count, 0)
+}
+
+func (d *DBMgrBase) RedisScanLimit(pattern string, count int64, limit int) (keys []string, err error) {
 	cursor := uint64(0)
 	for {
 		var curKeys []string
@@ -850,6 +854,11 @@ func (d *DBMgrBase) RedisScan(pattern string, count int64) (keys []string, err e
 		keys = append(keys, curKeys...)
 
 		if cursor == 0 { //已经遍历完成。
+			break
+		}
+
+		//达到限制了，退出循环
+		if limit > 0 && len(keys) >= limit {
 			break
 		}
 	}
