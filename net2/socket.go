@@ -85,7 +85,7 @@ func (c *ClientSocket) ConnectHostPort(host string, port uint16, Ttl time.Durati
 
 func (c *ClientSocket) Connect(addr string, ttl time.Duration, OnSocket OnSocket, ddb DataDecodeBase) error {
 	if OnSocket == nil {
-		return ErrParam
+		panic("OnSocket is nil")
 	}
 
 	c.Init(ddb, ttl, 0, OnSocket, c, c)
