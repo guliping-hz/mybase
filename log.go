@@ -207,7 +207,6 @@ func InitLogModule(dir, fileName string, day int, isInProduct bool, debugLv logr
 		//	TimestampFormat: TimeFmtLog,
 		//} //为了方便使用Logstash
 		logMy.Formatter = &logrus.TextFormatter{
-			ForceColors:     true,
 			TimestampFormat: TimeFmtLog2,
 		}
 		logMy.SetLevel(logrus.InfoLevel)
