@@ -318,3 +318,11 @@ func T(format string, args ...interface{}) {
 func C(p []byte) {
 	toLog(Custom, string(p))
 }
+
+type LogWriter struct {
+}
+
+func (w *LogWriter) Write(p []byte) (n int, err error) {
+	C(p)
+	return len(p), nil
+}
