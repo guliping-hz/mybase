@@ -27,7 +27,8 @@ const (
 	RedBold     = "\033[31;1m"
 	YellowBold  = "\033[33;1m"
 
-	Custom = logrus.Level(1000)
+	Custom     = logrus.Level(1000)
+	ChangeFile = 1001
 )
 
 const TimeFmtLog = "2006/01/02 15:04:05.000" //毫秒保留3位有效数字
@@ -80,7 +81,7 @@ func (imp *PrintHook) Fire(entry *logrus.Entry) error {
 	switch entry.Level {
 	case logrus.PanicLevel, logrus.FatalLevel, logrus.ErrorLevel:
 		color = Red
-	case logrus.WarnLevel:
+	case logrus.WarnLevel, Custom:
 		color = Yellow
 	case logrus.InfoLevel:
 		color = Green
@@ -186,7 +187,9 @@ func initLogDir(dir, fileName string, day int, ctx context.Context) error {
 						logMy.Debugln(l.msg)
 					case logrus.TraceLevel:
 						logMy.Traceln(l.msg)
-					case 100:
+					case Custom: //自定义统一为warning
+						logMy.Warnln(l.msg)
+					case ChangeFile:
 						_ = initLogFile()
 					}
 				case <-ctx.Done():
@@ -231,7 +234,7 @@ func CheckDay() {
 	select {
 	case <-ctxLog.Done():
 	default:
-		chanLog <- &logLevelMsg{level: 100}
+		chanLog <- &logLevelMsg{level: ChangeFile}
 	}
 }
 
