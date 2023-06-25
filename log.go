@@ -28,7 +28,8 @@ const (
 	YellowBold  = "\033[33;1m"
 
 	Custom     = logrus.Level(1000)
-	ChangeFile = 1001
+	Custom2    = logrus.Level(1001)
+	ChangeFile = 2000
 )
 
 const TimeFmtLog = "2006/01/02 15:04:05.000" //毫秒保留3位有效数字
@@ -62,7 +63,7 @@ type PrintHook struct {
 // 过滤等级
 func (imp *PrintHook) Levels() []logrus.Level {
 	return []logrus.Level{logrus.DebugLevel, logrus.InfoLevel, logrus.WarnLevel,
-		logrus.ErrorLevel, logrus.FatalLevel, logrus.PanicLevel, logrus.TraceLevel, Custom}
+		logrus.ErrorLevel, logrus.FatalLevel, logrus.PanicLevel, logrus.TraceLevel, Custom, Custom2}
 }
 
 // 打印
@@ -79,7 +80,7 @@ func (imp *PrintHook) Fire(entry *logrus.Entry) error {
 
 	color := Reset
 	switch entry.Level {
-	case logrus.PanicLevel, logrus.FatalLevel, logrus.ErrorLevel:
+	case logrus.PanicLevel, logrus.FatalLevel, logrus.ErrorLevel, Custom2:
 		color = Red
 	case logrus.WarnLevel, Custom:
 		color = Yellow
@@ -91,7 +92,7 @@ func (imp *PrintHook) Fire(entry *logrus.Entry) error {
 		color = Magenta
 	}
 
-	if entry.Level == Custom {
+	if entry.Level == Custom || entry.Level == Custom2 {
 		fmt.Printf("%s\n", entry.Message)
 	} else {
 		if len(entry.Data) != 0 {
@@ -172,7 +173,7 @@ func initLogDir(dir, fileName string, day int, ctx context.Context) error {
 						// ErrorLevel level. Logs. Used for errors that should definitely be noted.
 						// Commonly used for hooks to send errors to an error tracking service.
 						logMy.Fatalln(l.msg)
-					case logrus.ErrorLevel:
+					case logrus.ErrorLevel, Custom2:
 						// WarnLevel level. Non-critical entries that deserve eyes.
 						logMy.Errorln(l.msg)
 					case logrus.WarnLevel:
@@ -323,6 +324,14 @@ type LogWriter struct {
 }
 
 func (w *LogWriter) Write(p []byte) (n int, err error) {
-	C(p)
+	toLog(Custom, string(p))
+	return len(p), nil
+}
+
+type LogWriterError struct {
+}
+
+func (w *LogWriterError) Write(p []byte) (n int, err error) {
+	toLog(Custom2, string(p))
 	return len(p), nil
 }
