@@ -18,7 +18,7 @@ type GovReportData struct {
 	Ct    int    `json:"ct"`           //0已认证用户，2游客
 	Di    string `json:"di,omitempty"` //设备唯一标识  ct=2传这个
 	Pi    string `json:"pi,omitempty"` //用户唯一标识 ct=0传这个
-	Debug bool
+	Debug bool   `json:"-"`
 }
 
 type GovReportDatas struct {
