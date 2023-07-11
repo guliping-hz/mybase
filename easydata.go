@@ -2,6 +2,7 @@ package mybase
 
 import (
 	"reflect"
+	"strconv"
 )
 
 type H map[string]interface{}
@@ -27,9 +28,16 @@ func (e H) GetInt64(key string) (ret int64, ok bool) {
 	}
 
 	rV := reflect.ValueOf(dataI)
-	if rV.Kind() == reflect.Int || rV.Kind() == reflect.Int8 || rV.Kind() == reflect.Int16 ||
-		rV.Kind() == reflect.Int32 || rV.Kind() == reflect.Int64 {
+	rVKind := rV.Kind()
+	if rVKind == reflect.Int || rVKind == reflect.Int8 || rVKind == reflect.Int16 ||
+		rVKind == reflect.Int32 || rVKind == reflect.Int64 {
 		return rV.Int(), true
+	} else if rVKind == reflect.String {
+		vS, _ := e.GetString(key)
+		var err error
+		if ret, err = strconv.ParseInt(vS, 10, 64); err == nil {
+			return ret, true
+		}
 	}
 	retF, ok := e.GetFloat64(key)
 	if ok {
@@ -105,7 +113,8 @@ func (e H) GetBool(key string) (bool, bool) {
 	return false, false
 }
 
-/**
+/*
+*
 @output 必须是跟存的类型保持一致，output必须是指针类型
 */
 func (e H) Get(key string, output interface{}) bool {
