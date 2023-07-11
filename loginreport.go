@@ -11,13 +11,14 @@ import (
 )
 
 type GovReportData struct {
-	No int    `json:"no"`           //编号
-	Si string `json:"si"`           //服务器内部用户ID
-	Bt int    `json:"bt"`           //0下线，1上线
-	Ot int64  `json:"ot"`           //时间戳，单位秒
-	Ct int    `json:"ct"`           //0已认证用户，2游客
-	Di string `json:"di,omitempty"` //设备唯一标识  ct=2传这个
-	Pi string `json:"pi,omitempty"` //用户唯一标识 ct=0传这个
+	No    int    `json:"no"`           //编号
+	Si    string `json:"si"`           //服务器内部用户ID
+	Bt    int    `json:"bt"`           //0下线，1上线
+	Ot    int64  `json:"ot"`           //时间戳，单位秒
+	Ct    int    `json:"ct"`           //0已认证用户，2游客
+	Di    string `json:"di,omitempty"` //设备唯一标识  ct=2传这个
+	Pi    string `json:"pi,omitempty"` //用户唯一标识 ct=0传这个
+	Debug bool
 }
 
 type GovReportDatas struct {
@@ -34,17 +35,7 @@ var chanSig = make(chan *GovReportData)
 var datas GovReportDatas
 var chanEnd = make(chan bool)
 
-// 是否开启调试版署接口
-const DebugReport = false
-
-// 是否开启游戏上报功能
-const Report = true
-
 func PostReportData(data *GovReportData) {
-	//暂时不上报上线下线数据
-	if !Report {
-		return
-	}
 	go func() {
 		chanSig <- data
 	}()
@@ -104,7 +95,7 @@ func InitReport(appId, bizId, appSecret, url string) {
 				data.No = len(datas.Collections) + 1
 				datas.Collections = append(datas.Collections, data)
 
-				if DebugReport || data.No > 50 {
+				if data.Debug || data.No > 50 {
 					reportData() //上报数据
 					datas.Collections = make([]*GovReportData, 0)
 				}
