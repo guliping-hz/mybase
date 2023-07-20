@@ -41,7 +41,9 @@ func AbortEx(ctx *gin.Context, code int32, data interface{}, msg string) {
 	if ctx == nil {
 		return
 	}
-	ctx.AbortWithStatusJSON(http.StatusOK, gin.H{"code": code, "data": data, "msg": msg})
+	//ctx.AbortWithStatusJSON(http.StatusOK, gin.H{"code": code, "data": data, "msg": msg})
+	ctx.Abort()
+	ctx.PureJSON(http.StatusOK, gin.H{"code": code, "data": data, "msg": msg})
 }
 
 func EasyGet(ctx *gin.Context, key string, output interface{}) bool {
