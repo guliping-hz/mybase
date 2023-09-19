@@ -366,29 +366,12 @@ class BaseSetup:
         --reloadcmd     "nginx -s reload"
 """
 
+    def get_start():
+        return """#!/bin/bash
 
-class Setup(BaseSetup):
-    def __init__(self, args) -> None:
-        super().__init__(args.ip, args.port, args.user)
-
-        self.dir = args.dir
-        self.exe = args.exe
-        self.screen = args.screen
-        self.buildDir = args.build_dir
-        self.outDir = args.out_dir
-        self.shellOn = args.shell
-        self.cacheDirNames = args.cache_dir_names
-        self.envs = args.envs
-        self.crontab = args.crontab
-
-        screenName = self.exe + self.screen
-
-        self.shell_start = f"""
-#!/bin/bash
-
-echo "use {self.exe}"
+echo "use exeNameReplace"
 #增加执行权限
-chmod +xxx "$(pwd)/{self.exe}"
+chmod +xxx "$(pwd)/exeNameReplace"
 
 #exe后面带上 & 防止关闭终端，就把go进程结束掉;而且必须以shell脚本的形式启动 & 才能起作用。
 #直接在终端中敲下面的命令关掉终端，进程还是结束了。。
@@ -399,26 +382,26 @@ export GOTRACEBACK=crash
 
 #多个服务只是目录的不同
 #必须重定向到/dev/null，否则远程启动时，关闭终端，进程也会结束
-$(pwd)/{self.exe} &
-#$(pwd)/{self.exe} > /dev/null &
+$(pwd)/exeNameReplace &
+#$(pwd)/exeNameReplace > /dev/null &
 """
-        self.shell_end = """
-#!/bin/bash
+
+    def get_end():
+        return """#!/bin/bash
 
 #通用停止当前目录启动的进程
 #kill -9 发送 SIGKILL信号
 #ps -aux | grep "$(pwd)" | grep -v "grep" | awk '{print $2}' | xargs kill -9
 #15 发送 SIGTERM信号，允许程序优雅退出
-# ps -aux | grep "$(pwd)" | grep -v "grep" | awk '{print $2}' | xargs kill -15
+#ps -aux | grep "$(pwd)" | grep -v "grep" | awk '{print $2}' | xargs kill -15
 
-#同一个目录有多个exe的时候，适用于下面的结束
 function stop(){
     pid=$(ps -aux | grep "$(pwd)/$1" | grep -v "grep" | awk '{print $2}')
     if [ -n "$pid" ]; then
         echo "stop $1 pid: $pid"
         echo "$pid" | xargs kill "$2"
     else
-        echo "No process:$(pwd)/$1 to kill"
+        echo "No process:$1 to kill"
     fi
 }
 
@@ -426,13 +409,13 @@ function stop15(){
     stop "$1" -15
 }
 
-stop15 {self.exe}
+stop15 exeNameReplace
 """
 
-        self.shell_restart = """
-#!/bin/bash
+    def get_restart():
+        return """#!/bin/bash
 
-#上传后，如果运行报错。更改回车符：goland->File->File Properties->Line Separators->LF-Unix & macOs(\n)
+#上传后，如果运行报错。更改回车符：goland->File->File Properties->Line Separators->LF-Unix & macOs
 
 #通用重启当前目录的进程。
 chmod +xxx $(pwd)/start.sh
@@ -443,27 +426,36 @@ echo "sleep 2s..."
 sleep 2s
 $(pwd)/start.sh
 """
-        self.shell_screen = (
-            """
-#退出对应的screen  ||true 忽略执行错误
-screen -S """
-            + screenName
-            + """ -X quit || true
-#重新创建一个新的screen
-screen -dmS """
-            + screenName
-            + """ || false
 
-#指定执行脚本内容 
-script="cd """
-            + self.dir
-            + """  && ./start.sh"
+    def get_screen():
+        return """#退出对应的screen  ||true 忽略执行错误
+screen -S screenNameReplace -X quit || true
+#重新创建一个新的screen
+screen -dmS screenNameReplace || false
+
+#指定执行脚本内容
+script="cd linuxDirReplace  && ./start.sh"
 #离屏执行一段内容
-screen -S """
-            + screenName
-            + """ -X eval "screen" "-X" "stuff '${script} \n'"
+screen -S screenNameReplace -X eval "screen" "-X" "stuff '${script} \n'"
 """
-        )
+
+
+class Setup(BaseSetup):
+    def __init__(self, args: object | None = None) -> None:
+        super().__init__(args and args.ip, args and args.port, args and args.user)
+
+        self.dir = args and args.dir or "/opt/test"
+        self.exe = args and args.exe or "exe"
+        self.screen = args and args.screen or ""
+        self.outDir = args and args.out_dir or "."
+
+        if args:
+            self.buildDir = args.build_dir
+
+            self.shellOn = args.shell
+            self.cacheDirNames = args.cache_dir_names
+            self.envs = args.envs
+            self.crontab = args.crontab
 
     def start(self) -> bool:
         # 编译代码
@@ -478,7 +470,7 @@ screen -S """
             if not self.remote_exec(f"mkdir -p {subDir}"):
                 return False
 
-        # 重命名
+        # # 重命名
         self.remote_exec(f"cd {self.dir} && rm {self.exe}.bak")
         self.remote_exec(f"cd {self.dir} && mv {self.exe} {self.exe}.bak")
 
@@ -489,15 +481,39 @@ screen -S """
 
         if self.shellOn:
             # 上传
-            if not self.remote_exec(f"echo {self.shell_end} > {self.dir}/end.sh"):
-                return False
-            if not self.remote_exec(f"echo {self.shell_start} > {self.dir}/start.sh"):
-                return False
+            shells = [
+                {"name": "end.sh", "content": BaseSetup.get_end()},
+                {"name": "start.sh", "content": BaseSetup.get_start()},
+                {"name": "restart.sh", "content": BaseSetup.get_restart()},
+                {"name": "screen.sh", "content": BaseSetup.get_screen()},
+            ]
+            for i in range(len(shells)):
+                thePath = f'{self.outDir}/{shells[i]["name"]}'
+                with open(thePath, "wb") as f:
+                    f.write(shells[i]["content"].encode("utf8"))
+                if not self.remote_put(thePath, self.dir):  # + "/" + shells[i]
+                    return False
+                os.remove(thePath)
+
+            # 替换
             if not self.remote_exec(
-                f"echo {self.shell_restart} > {self.dir}/restart.sh"
+                f'sed -i "s/exeNameReplace/{self.exe}/g" {self.dir}/start.sh'
             ):
                 return False
-            if not self.remote_exec(f"echo {self.shell_screen} > {self.dir}/screen.sh"):
+
+            if not self.remote_exec(
+                f'sed -i "s/exeNameReplace/{self.exe}/g" {self.dir}/end.sh'
+            ):
+                return False
+
+            screenName = self.exe + self.screen
+            if not self.remote_exec(
+                f'sed -i "s/screenNameReplace/{screenName}/g" {self.dir}/screen.sh'
+            ):
+                return False
+            if not self.remote_exec(
+                f'sed -i "s#linuxDirReplace#{self.dir}#g" {self.dir}/screen.sh'
+            ):
                 return False
 
         for i in range(0, len(self.envs), 3):
