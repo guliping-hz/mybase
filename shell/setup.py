@@ -360,10 +360,10 @@ class BaseSetup:
 
     def get_acme(hostName: str):
         return f"""
-"/root/.acme.sh/"acme.sh --install-cert -d {hostName} \
-        --key-file       /root/cert/{hostName}/key.pem  \
-        --fullchain-file /root/cert/{hostName}/cert.pem \
-        --reloadcmd     "nginx -s reload"
+/root/.acme.sh/acme.sh --install-cert -d {hostName} \
+--key-file /root/cert/{hostName}/key.pem  \
+--fullchain-file /root/cert/{hostName}/cert.pem \
+--reloadcmd "nginx -s reload"
 """
 
     def get_start():
@@ -586,7 +586,10 @@ def parse_to_setup():
 def test():
     # remote_exec("127.0.0.1", "ls -l")
     # remote_exec("127.0.0.1", "pwd")
-    cwd = os.getcwd()  # 获取当前目录
+    # cwd = os.getcwd()  # 获取当前目录
+    s = BaseSetup.get_acme("www.baidu.com")
+    print(s)
+    remote_exec("127.0.0.1", f"echo '{s}' > /root/acme.test.sh")
     # remote_put("127.0.0.1", cwd + "/../auth/cfg/yqw2.json", "/opt/auth/auth.json")
 
     pass
@@ -594,7 +597,7 @@ def test():
 
 if __name__ == "__main__":
     # test()
-    # print(__file__, os.path.dirname(__file__))
+    # print(__file__, os.path.dirname(__file__)
     parse_to_setup()
 
     # print(BaseSetup.get_acme("1.cn"))
