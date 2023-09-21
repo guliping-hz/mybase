@@ -61,7 +61,7 @@ func CrossMidW(ctx *gin.Context) {
 	origin := ctx.Request.Header.Get("Origin") //请求头部
 	if origin != "" {
 		//接收客户端发送的origin （重要！）
-		ctx.Header("Access-Control-Allow-Origin", origin)
+		ctx.Header("Access-Control-Allow-Origin", "*")
 		//服务器支持的所有跨域请求的方法
 		ctx.Header("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE,UPDATE")
 		//允许跨域设置可以返回其他字段，可以自定义字段
@@ -70,6 +70,8 @@ func CrossMidW(ctx *gin.Context) {
 		w.Header().Add("Access-Control-Allow-Headers", "nonce")
 		w.Header().Add("Access-Control-Allow-Headers", "sign")
 		w.Header().Add("Access-Control-Allow-Headers", "token")
+		w.Header().Add("Access-Control-Allow-Headers", "curtime")
+
 		// 允许浏览器（客户端）可以解析的头部 （重要）
 		ctx.Header("Access-Control-Expose-Headers", "Content-Length, Access-Control-Allow-Origin, Access-Control-Allow-Headers")
 		//设置缓存时间
