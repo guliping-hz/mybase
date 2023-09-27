@@ -274,10 +274,10 @@ class BtApi:
         result = http_with_cookie(url, param, 1800)
         if result:
             jsonResult = json.loads(result)
-            if jsonResult["siteStatus"]:
+            if jsonResult and "siteStatus" in jsonResult and jsonResult["siteStatus"]:
                 my_print(f"{domain} 建站成功")
                 return jsonResult
-        my_print(f"{domain} 建站失败")
+        my_print(f"{domain} 建站失败", result)
         return None
 
     # 设置网站根路径
@@ -530,9 +530,9 @@ class Setup(BaseSetup):
             ):
                 return False
 
-            # sleep 3秒
-            my_print("sleep 3...")
-            time.sleep(3)
+            # sleep 2秒
+            my_print("sleep 2...")
+            time.sleep(2)
 
             # 启动
             if not self.remote_exec(f"cd {self.dir} && chmod +xxx ./start.sh"):
