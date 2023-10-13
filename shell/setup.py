@@ -453,6 +453,8 @@ class Setup(BaseSetup):
             self.buildDir = args.build_dir
 
             self.shellOn = args.shell
+            self.shellStart = args.shell_start
+
             self.cacheDirNames = args.cache_dir_names
             self.envs = args.envs
             self.crontab = args.crontab
@@ -516,6 +518,10 @@ class Setup(BaseSetup):
             ):
                 return False
 
+        if self.shellStart != "":
+            if not self.remote_put(self.shellStart, self.dir):  # + "/start.sh"
+                return False
+
         for i in range(0, len(self.envs), 3):
             here, there, isDir = self.envs[i], self.envs[i + 1], self.envs[i + 2] == "1"
             if not self.remote_put(here, self.dir + "/" + there, isDir):
@@ -576,6 +582,7 @@ def parse_to_setup():
     parser.add_argument("-cache_dir_names", nargs="*", help="远程备用目录名,以dir指定的目录为当前前缀")
     parser.add_argument("-envs", nargs="*", help="环境配置文件。例:本地文件名,服务器文件名,1目录/0文件")
     parser.add_argument("-crontab", default="", help="远程用户")
+    parser.add_argument("-shell_start", default="", help="特殊的启动命令shell")
 
     args = parser.parse_args()
     my_print("parseArgs=", args)
