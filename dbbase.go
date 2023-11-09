@@ -325,8 +325,8 @@ func (d *DBMgrBase) SelectObjectsEx2(logWarn bool, v any, query string, args ...
 	}
 }
 
-func (d *DBMgrBase) Update(query string, args ...interface{}) bool {
-	return d.update(true, query, args...) >= 0
+func (d *DBMgrBase) Update(query string, args ...interface{}) int64 {
+	return d.update(true, query, args...)
 }
 func (d *DBMgrBase) UpdateNoWarn(query string, args ...interface{}) bool {
 	return d.update(false, query, args...) >= 0
