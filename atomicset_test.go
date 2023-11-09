@@ -13,7 +13,7 @@ func TestAtomicSet_Contain(t *testing.T) {
 	saveSet.Insert(3)
 	saveSet.Remove(2)
 
-	saveSet.Range(func(val interface{}) bool {
+	saveSet.Range(func(val any) bool {
 		fmt.Printf("v=%v\n", val)
 		return true
 	})

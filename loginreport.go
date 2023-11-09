@@ -48,7 +48,7 @@ func SendReport() {
 
 func reportData() {
 	//上报数据
-	heads := make(map[string]interface{})
+	heads := make(map[string]any)
 	heads["Content-Type"] = "application/json;charset=utf-8"
 	heads["appId"] = SmAppId
 	heads["bizId"] = SmBizId

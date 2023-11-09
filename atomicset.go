@@ -6,7 +6,7 @@ import (
 )
 
 type AtomicSet struct {
-	set   map[interface{}]*list.Element
+	set   map[any]*list.Element
 	lst   list.List //双向链表。
 	mutex sync.RWMutex
 
@@ -15,12 +15,12 @@ type AtomicSet struct {
 
 func (a *AtomicSet) lazyInit() {
 	if a.set == nil {
-		a.set = make(map[interface{}]*list.Element)
+		a.set = make(map[any]*list.Element)
 		a.lst.Init()
 	}
 }
 
-func (a *AtomicSet) Range(cb func(val interface{}) bool) {
+func (a *AtomicSet) Range(cb func(val any) bool) {
 	if cb == nil {
 		return
 	}
@@ -37,7 +37,7 @@ func (a *AtomicSet) Range(cb func(val interface{}) bool) {
 	}
 }
 
-func (a *AtomicSet) Insert(val interface{}) {
+func (a *AtomicSet) Insert(val any) {
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
 
@@ -50,7 +50,7 @@ func (a *AtomicSet) Insert(val interface{}) {
 	a.set[val] = p //记录指针位置
 }
 
-func (a *AtomicSet) Remove(val interface{}) {
+func (a *AtomicSet) Remove(val any) {
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
 
@@ -60,7 +60,7 @@ func (a *AtomicSet) Remove(val interface{}) {
 	}
 }
 
-func (a *AtomicSet) Contain(val interface{}) bool {
+func (a *AtomicSet) Contain(val any) bool {
 	a.mutex.RLock()
 	defer a.mutex.RUnlock()
 
@@ -74,7 +74,7 @@ func (a *AtomicSet) Len() int {
 	return a.lst.Len()
 }
 
-func (a *AtomicSet) Random() (interface{}, bool) {
+func (a *AtomicSet) Random() (any, bool) {
 	a.mutex.RLock()
 	defer a.mutex.RUnlock()
 
@@ -89,7 +89,7 @@ func (a *AtomicSet) Random() (interface{}, bool) {
 	return nil, false
 }
 
-func (a *AtomicSet) Next() (interface{}, bool) {
+func (a *AtomicSet) Next() (any, bool) {
 	a.mutex.RLock()
 	defer a.mutex.RUnlock()
 

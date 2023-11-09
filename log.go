@@ -256,7 +256,7 @@ func toLog(lv logrus.Level, msg string) {
 	}
 }
 
-func D(format string, args ...interface{}) {
+func D(format string, args ...any) {
 	//0的话获取的是129行调用，我们要获取外层调用的位置
 	if isProduct {
 		return
@@ -268,7 +268,7 @@ func D(format string, args ...interface{}) {
 	}
 }
 
-func I(format string, args ...interface{}) {
+func I(format string, args ...any) {
 	//0的话获取的是129行调用，我们要获取外层调用的位置
 	_, file, line, ok := runtime.Caller(1)
 	if ok {
@@ -276,7 +276,7 @@ func I(format string, args ...interface{}) {
 	}
 }
 
-func W(format string, args ...interface{}) {
+func W(format string, args ...any) {
 	//0的话获取的是129行调用，我们要获取外层调用的位置
 	_, file, line, ok := runtime.Caller(1)
 	if ok {
@@ -284,7 +284,7 @@ func W(format string, args ...interface{}) {
 	}
 }
 
-func E(format string, args ...interface{}) {
+func E(format string, args ...any) {
 	//0的话获取的是129行调用，我们要获取外层调用的位置
 	_, file, line, ok := runtime.Caller(1) //funcName
 	//fmt.Println("Func Name=" + runtime.FuncForPC(funcName).Name())
@@ -293,7 +293,7 @@ func E(format string, args ...interface{}) {
 	}
 }
 
-func P(format string, args ...interface{}) {
+func P(format string, args ...any) {
 	if isProduct {
 		return
 	}
@@ -307,7 +307,7 @@ func P(format string, args ...interface{}) {
 }
 
 // 用于追踪定位
-func T(format string, args ...interface{}) {
+func T(format string, args ...any) {
 	stack := debug.Stack()
 	_, file, line, ok := runtime.Caller(1)
 	if ok {

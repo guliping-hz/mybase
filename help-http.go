@@ -66,9 +66,9 @@ func OnDebugHttpReq() {
 }
 
 type HttpResult struct {
-	Code int         `json:"code"` //状态码
-	Msg  string      `json:"msg"`  //信息
-	Data interface{} `json:"data"` //数据结构
+	Code int    `json:"code"` //状态码
+	Msg  string `json:"msg"`  //信息
+	Data any    `json:"data"` //数据结构
 }
 
 func UrlEncode(param string) string {
@@ -97,8 +97,8 @@ func BuildResultEx(w http.ResponseWriter, r *http.Request, result string) {
 }
 
 // 构造http返回结果
-func BuildResult(w http.ResponseWriter, r *http.Request, code int32, msg string, data interface{}) {
-	var result = map[string]interface{}{}
+func BuildResult(w http.ResponseWriter, r *http.Request, code int32, msg string, data any) {
+	var result = map[string]any{}
 	result["status"] = code //为了兼容老版本，后续会逐步去掉这个status，以code返回值为准
 	result["code"] = code
 	result["msg"] = msg
@@ -118,23 +118,23 @@ func BuildResult1(w http.ResponseWriter, r *http.Request, code int32) {
 	BuildResult2(w, r, code, "")
 }
 
-func HttpGet(host, api string, param map[string]interface{}, preFix, subFix string) (string, error) {
+func HttpGet(host, api string, param map[string]any, preFix, subFix string) (string, error) {
 	return HttpGetEx(host, api, param, preFix, subFix, true)
 }
 
-func HttpGetEx(host, api string, param map[string]interface{}, preFix, subFix string, needSign bool) (string, error) {
+func HttpGetEx(host, api string, param map[string]any, preFix, subFix string, needSign bool) (string, error) {
 	return HttpGetUrl(fmt.Sprintf("%s/%s", host, api), param, preFix, subFix, needSign)
 }
 
-func HttpGetUrlNoSign(url string, param map[string]interface{}) (string, error) {
+func HttpGetUrlNoSign(url string, param map[string]any) (string, error) {
 	return HttpGetUrl(url, param, "", "", false)
 }
 
-func HttpGetUrl(httpUrl string, param map[string]interface{}, preFix, subFix string, needSign bool) (string, error) {
+func HttpGetUrl(httpUrl string, param map[string]any, preFix, subFix string, needSign bool) (string, error) {
 	return HttpGetUrlEx(httpUrl, param, nil, preFix, subFix, needSign)
 }
 
-func HttpGetUrlEx(httpUrl string, param, customHead map[string]interface{}, preFix, subFix string, needSign bool) (string, error) {
+func HttpGetUrlEx(httpUrl string, param, customHead map[string]any, preFix, subFix string, needSign bool) (string, error) {
 	values := url.Values{}
 	if param != nil {
 		for k, v := range param {
@@ -144,7 +144,7 @@ func HttpGetUrlEx(httpUrl string, param, customHead map[string]interface{}, preF
 	return HttpGetUrlValues(httpUrl, values, customHead, preFix, subFix, needSign)
 }
 
-func HttpGetUrlValues(httpUrl string, query url.Values, customHead map[string]interface{}, preFix, subFix string, needSign bool) (string, error) {
+func HttpGetUrlValues(httpUrl string, query url.Values, customHead map[string]any, preFix, subFix string, needSign bool) (string, error) {
 	var sign = ""
 	var curTimeStr = ""
 	var nonce = ""
@@ -222,7 +222,7 @@ func HttpGetUrlValues(httpUrl string, query url.Values, customHead map[string]in
 	return result, nil
 }
 
-func HttpPostJson(strURL string, params, heads map[string]interface{}) (string, error) {
+func HttpPostJson(strURL string, params, heads map[string]any) (string, error) {
 	theBody, err := json.Marshal(params)
 	if err != nil {
 		return "", err
@@ -230,9 +230,9 @@ func HttpPostJson(strURL string, params, heads map[string]interface{}) (string, 
 	return HttpPostJsonString(strURL, string(theBody), heads)
 }
 
-func HttpPostJsonString(strURL, bodyStr string, heads map[string]interface{}) (string, error) {
+func HttpPostJsonString(strURL, bodyStr string, heads map[string]any) (string, error) {
 	if heads == nil {
-		heads = make(map[string]interface{})
+		heads = make(map[string]any)
 	}
 
 	if _, ok := heads["Content-Type"]; !ok {
@@ -241,11 +241,11 @@ func HttpPostJsonString(strURL, bodyStr string, heads map[string]interface{}) (s
 	return HttpPost(strURL, bodyStr, heads)
 }
 
-func HttpPostForm(strURL string, params, heads map[string]interface{}) (string, error) {
+func HttpPostForm(strURL string, params, heads map[string]any) (string, error) {
 	return HttpPostFormWithQuery(strURL, params, heads, nil)
 }
 
-func HttpPostFormWithQuery(strURL string, params, heads map[string]interface{}, query url.Values) (string, error) {
+func HttpPostFormWithQuery(strURL string, params, heads map[string]any, query url.Values) (string, error) {
 	values := url.Values{}
 	for k := range params {
 		values.Add(k, fmt.Sprintf("%v", params[k]))
@@ -254,9 +254,9 @@ func HttpPostFormWithQuery(strURL string, params, heads map[string]interface{}, 
 	return HttpPostFormWithQuery2(strURL, values, heads, query)
 }
 
-func HttpPostFormWithQuery2(strURL string, params url.Values, heads map[string]interface{}, query url.Values) (string, error) {
+func HttpPostFormWithQuery2(strURL string, params url.Values, heads map[string]any, query url.Values) (string, error) {
 	if heads == nil {
-		heads = make(map[string]interface{})
+		heads = make(map[string]any)
 	}
 	heads["Content-Type"] = "application/x-www-form-urlencoded"
 	body := ""
@@ -267,12 +267,12 @@ func HttpPostFormWithQuery2(strURL string, params url.Values, heads map[string]i
 }
 
 // 直接调用这个HttpPost 需要指定heads["Content-Type"]
-func HttpPost(strURL, body string, heads map[string]interface{}) (string, error) {
+func HttpPost(strURL, body string, heads map[string]any) (string, error) {
 	return HttpPostWithQuery(strURL, body, heads, nil)
 }
 
 // 直接调用这个HttpPost 需要指定heads["Content-Type"]
-func HttpPostWithQuery(strURL, body string, heads map[string]interface{}, query url.Values) (string, error) {
+func HttpPostWithQuery(strURL, body string, heads map[string]any, query url.Values) (string, error) {
 	urlFull := strURL
 	if query != nil {
 		urlFull = urlFull + "?" + query.Encode()
@@ -307,7 +307,7 @@ func HttpPostWithQuery(strURL, body string, heads map[string]interface{}, query 
 	return string(respBodyBytes), nil
 }
 
-func SortParam(param map[string]interface{}) string {
+func SortParam(param map[string]any) string {
 	var paramKeys []string
 	for k := range param {
 		paramKeys = append(paramKeys, k)

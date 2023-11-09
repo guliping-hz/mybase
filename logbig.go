@@ -94,7 +94,7 @@ func CheckDayForLogBig() {
 }
 
 // 内部不提供换行，需要自己换行。
-func LogBig(format string, args ...interface{}) {
+func LogBig(format string, args ...any) {
 	logBigMutex.Lock()
 	defer logBigMutex.Unlock()
 	if logBigFile == nil {

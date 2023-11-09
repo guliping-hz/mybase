@@ -21,7 +21,7 @@ const (
 
 var SqlRegExp *regexp.Regexp
 
-func WrapSql(query string, args ...interface{}) string {
+func WrapSql(query string, args ...any) string {
 	i := 0
 	return SqlRegExp.ReplaceAllStringFunc(query, func(s string) (arg string) {
 		argV := args[i]
@@ -77,8 +77,8 @@ func (d *DBMgrBase) CheckDBConnectEx(withRedis bool) error {
 	return nil
 }
 
-// 读取多个数据库表到 [][]map[string]interface{} 中
-func (d *DBMgrBase) LoadTableEx(query string, args ...interface{}) ([][]map[string]interface{}, error) {
+// 读取多个数据库表到 [][]map[string]any 中
+func (d *DBMgrBase) LoadTableEx(query string, args ...any) ([][]map[string]any, error) {
 	// 将数据填入mapUsrLv中
 	stmt, err := d.DbInst.Prepare(query)
 	if err != nil {
@@ -96,7 +96,7 @@ func (d *DBMgrBase) LoadTableEx(query string, args ...interface{}) ([][]map[stri
 	}
 	defer rows.Close()
 
-	result := make([][]map[string]interface{}, 0)
+	result := make([][]map[string]any, 0)
 	dealResult := func() error {
 		cols, err := rows.Columns()
 		if err != nil {
@@ -105,9 +105,9 @@ func (d *DBMgrBase) LoadTableEx(query string, args ...interface{}) ([][]map[stri
 		}
 
 		colCnt := len(cols)
-		tableData := make([]map[string]interface{}, 0)
-		values := make([]interface{}, colCnt)
-		valuePtrs := make([]interface{}, colCnt)
+		tableData := make([]map[string]any, 0)
+		values := make([]any, colCnt)
+		valuePtrs := make([]any, colCnt)
 		for rows.Next() {
 			for i := 0; i < colCnt; i++ {
 				valuePtrs[i] = &values[i]
@@ -118,9 +118,9 @@ func (d *DBMgrBase) LoadTableEx(query string, args ...interface{}) ([][]map[stri
 				break
 			}
 
-			entry := make(map[string]interface{})
+			entry := make(map[string]any)
 			for i, col := range cols {
-				var v interface{}
+				var v any
 				val := values[i]
 				b, ok := val.([]byte)
 				if ok {
@@ -149,8 +149,8 @@ func (d *DBMgrBase) LoadTableEx(query string, args ...interface{}) ([][]map[stri
 	return result, nil
 }
 
-// 读取单个数据库表到 []map[string]interface{} 中
-func (d *DBMgrBase) LoadTable(query string, args ...interface{}) ([]map[string]interface{}, error) {
+// 读取单个数据库表到 []map[string]any 中
+func (d *DBMgrBase) LoadTable(query string, args ...any) ([]map[string]any, error) {
 	// 将数据填入mapUsrLv中
 	stmt, err := d.DbInst.Prepare(query)
 	if err != nil {
@@ -174,9 +174,9 @@ func (d *DBMgrBase) LoadTable(query string, args ...interface{}) ([]map[string]i
 	}
 
 	col_cnt := len(cols)
-	tableData := make([]map[string]interface{}, 0)
-	values := make([]interface{}, col_cnt)
-	valuePtrs := make([]interface{}, col_cnt)
+	tableData := make([]map[string]any, 0)
+	values := make([]any, col_cnt)
+	valuePtrs := make([]any, col_cnt)
 	for rows.Next() {
 		for i := 0; i < col_cnt; i++ {
 			valuePtrs[i] = &values[i]
@@ -187,9 +187,9 @@ func (d *DBMgrBase) LoadTable(query string, args ...interface{}) ([]map[string]i
 			break
 		}
 
-		entry := make(map[string]interface{})
+		entry := make(map[string]any)
 		for i, col := range cols {
-			var v interface{}
+			var v any
 			val := values[i]
 			b, ok := val.([]byte)
 			if ok {
@@ -204,12 +204,12 @@ func (d *DBMgrBase) LoadTable(query string, args ...interface{}) ([]map[string]i
 	return tableData, nil
 }
 
-func (d *DBMgrBase) GetCnt(query string, args ...interface{}) int64 {
+func (d *DBMgrBase) GetCnt(query string, args ...any) int64 {
 	cnt, _ := d.GetCntEx(query, args...)
 	return cnt
 }
 
-func (d *DBMgrBase) GetCntEx(query string, args ...interface{}) (int64, bool) {
+func (d *DBMgrBase) GetCntEx(query string, args ...any) (int64, bool) {
 	tableData, err := d.LoadTable(query, args...)
 	if err != nil {
 		return 0, false
@@ -225,7 +225,7 @@ func (d *DBMgrBase) GetCntEx(query string, args ...interface{}) (int64, bool) {
 	return cnt, true
 }
 
-func (d *DBMgrBase) GetSum(query string, args ...interface{}) int64 {
+func (d *DBMgrBase) GetSum(query string, args ...any) int64 {
 	var sum int64
 	tableData, err := d.LoadTable(query, args...)
 	if err == nil {
@@ -238,7 +238,7 @@ func (d *DBMgrBase) GetSum(query string, args ...interface{}) int64 {
 	return sum
 }
 
-func (d *DBMgrBase) GetSumFloat64(query string, args ...interface{}) float64 {
+func (d *DBMgrBase) GetSumFloat64(query string, args ...any) float64 {
 	var sum float64
 	tableData, err := d.LoadTable(query, args...)
 	if err == nil {
@@ -252,10 +252,10 @@ func (d *DBMgrBase) GetSumFloat64(query string, args ...interface{}) float64 {
 }
 
 // the v must be a pointer to a map or struct.
-func (d *DBMgrBase) SelectObject(v interface{}, query string, args ...interface{}) error {
+func (d *DBMgrBase) SelectObject(v any, query string, args ...any) error {
 	return d.selectObject(true, v, query, args...)
 }
-func (d *DBMgrBase) SelectObjectNoWarn(v interface{}, query string, args ...interface{}) error {
+func (d *DBMgrBase) SelectObjectNoWarn(v any, query string, args ...any) error {
 	return d.selectObject(false, v, query, args...)
 }
 
@@ -263,7 +263,7 @@ func (d *DBMgrBase) SelectObjectNoWarn(v interface{}, query string, args ...inte
 *
 @param v 必须是数据结构指针.
 */
-func (d *DBMgrBase) selectObject(logWarn bool, v interface{}, query string, args ...interface{}) error {
+func (d *DBMgrBase) selectObject(logWarn bool, v any, query string, args ...any) error {
 	dataType := reflect.TypeOf(v) //获取数据类型
 	if dataType.Kind() != reflect.Ptr {
 		E("query=%s, Kind error=need Ptr", WrapSql(query, args...))
@@ -297,13 +297,13 @@ func (d *DBMgrBase) selectObject(logWarn bool, v interface{}, query string, args
 
 @param v 必须是存放map或是struct的数组的指针.
 */
-func (d *DBMgrBase) SelectObjectsEx(v interface{}, query string, args ...interface{}) error {
+func (d *DBMgrBase) SelectObjectsEx(v any, query string, args ...any) error {
 	return d.SelectObjectsEx2(true, v, query, args...)
 }
-func (d *DBMgrBase) SelectObjectsExNoWarn(v interface{}, query string, args ...interface{}) error {
+func (d *DBMgrBase) SelectObjectsExNoWarn(v any, query string, args ...any) error {
 	return d.SelectObjectsEx2(false, v, query, args...)
 }
-func (d *DBMgrBase) SelectObjectsEx2(logWarn bool, v interface{}, query string, args ...interface{}) error {
+func (d *DBMgrBase) SelectObjectsEx2(logWarn bool, v any, query string, args ...interface{}) error {
 	tableData, err := d.LoadTable(query, args...)
 	if err != nil {
 		return err
@@ -326,38 +326,35 @@ func (d *DBMgrBase) SelectObjectsEx2(logWarn bool, v interface{}, query string, 
 }
 
 func (d *DBMgrBase) Update(query string, args ...interface{}) bool {
-	return d.update(true, query, args...)
+	return d.update(true, query, args...) >= 0
 }
 func (d *DBMgrBase) UpdateNoWarn(query string, args ...interface{}) bool {
-	return d.update(false, query, args...)
+	return d.update(false, query, args...) >= 0
 }
 
 // 通用的update方法
-func (d *DBMgrBase) update(logWarn bool, query string, args ...interface{}) bool {
+func (d *DBMgrBase) update(logWarn bool, query string, args ...interface{}) int64 {
 	//I("Update,query=[%s] args=%v", query, args)
 	stmt, err := d.DbInst.Prepare(query)
 	if err != nil {
 		E("Update=%s, Prepare error=%s", WrapSql(query, args...), err.Error())
-		return false
+		return -1
 	}
 	defer stmt.Close()
 
 	r, err := stmt.Exec(args...)
 	if err != nil {
 		E("Update=%s, Exec error=%s", WrapSql(query, args...), err.Error())
-		return false
+		return -1
 	}
 	rowsAffected, err := r.RowsAffected()
 	if err != nil {
 		E("Update=%s, RowsAffected error=%s", WrapSql(query, args...), err.Error())
-		return false
-	} else if rowsAffected <= 0 {
-		if logWarn {
-			W("Update=%s, RowsAffected is 0", WrapSql(query, args...))
-		}
-		return true
+		return -1
+	} else if rowsAffected == 0 && logWarn {
+		W("Update=%s, RowsAffected is 0", WrapSql(query, args...))
 	}
-	return true
+	return rowsAffected
 }
 
 // Insert 通用方法

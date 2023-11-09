@@ -72,7 +72,7 @@ func DingWarn(dingMsg *ReqDingMsg, secret string) (bool, string) {
 		urlDD = fmt.Sprintf("%s%s&timestamp=%s&sign=%s", DingDingUrl, dingMsg.Token, timeStamp, sign)
 	}
 
-	heads := make(map[string]interface{})
+	heads := make(map[string]any)
 	heads["Content-Type"] = "application/json"
 	body, err := HttpPost(urlDD, string(buf), heads)
 	if err != nil {

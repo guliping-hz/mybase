@@ -7,7 +7,7 @@ import (
 	"sync"
 )
 
-type EventData interface{}
+type EventData any
 type Handler func(EventData)
 
 func (h Handler) Address() int64 {
@@ -95,7 +95,8 @@ func (e *EventEmitters) OffByTarget(target string) {
 	e.off("", 0, target)
 }
 
-/**
+/*
+*
 session = 0 表示清空
 */
 func (e *EventEmitters) off(key string, session int64, target string) {

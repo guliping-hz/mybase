@@ -5,9 +5,9 @@ import (
 	"strconv"
 )
 
-type H map[string]interface{}
+type H map[string]any
 
-func (e H) GetInterface(key string) (interface{}, bool) {
+func (e H) GetInterface(key string) (any, bool) {
 	dataI, ok := e[key]
 	return dataI, ok
 }
@@ -17,7 +17,7 @@ func (e H) GetH(key string) (H, bool) {
 	if !ok {
 		return nil, false
 	}
-	data, ok := dataI.(map[string]interface{})
+	data, ok := dataI.(map[string]any)
 	return H(data), ok
 }
 
@@ -117,7 +117,7 @@ func (e H) GetBool(key string) (bool, bool) {
 *
 @output 必须是跟存的类型保持一致，output必须是指针类型
 */
-func (e H) Get(key string, output interface{}) bool {
+func (e H) Get(key string, output any) bool {
 	dataI, ok := e.GetInterface(key)
 	if !ok {
 		return false
@@ -126,7 +126,7 @@ func (e H) Get(key string, output interface{}) bool {
 	return true
 }
 
-func (e H) Set(key string, val interface{}) {
+func (e H) Set(key string, val any) {
 	e[key] = val
 }
 

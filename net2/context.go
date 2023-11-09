@@ -13,7 +13,7 @@ type Context struct {
 	socket   iSocket  //socket对象 仅net2内部使用
 	OnSocket OnSocket //对socket的监听
 
-	keys map[string]interface{}
+	keys map[string]any
 	mu   sync.RWMutex
 
 	readDB *bytes.Buffer
@@ -45,7 +45,7 @@ func (c *Context) Err() error {
 	return nil
 }
 
-func (c *Context) Value(key interface{}) interface{} {
+func (c *Context) Value(key any) any {
 	keyStr, ok := key.(string)
 	if !ok {
 		return nil
@@ -61,24 +61,24 @@ func (c *Context) SessionId() uint64 {
 	return c.sessionId
 }
 
-func (c *Context) Set(key string, value interface{}) {
+func (c *Context) Set(key string, value any) {
 	c.mu.Lock()
 	if c.keys == nil {
-		c.keys = make(map[string]interface{})
+		c.keys = make(map[string]any)
 	}
 
 	c.keys[key] = value
 	c.mu.Unlock()
 }
 
-func (c *Context) Get(key string) (value interface{}, exists bool) {
+func (c *Context) Get(key string) (value any, exists bool) {
 	c.mu.RLock()
 	value, exists = c.keys[key]
 	c.mu.RUnlock()
 	return
 }
 
-//func (c *Context) GetEx(key string, output interface{}) bool {
+//func (c *Context) GetEx(key string, output any) bool {
 //	dataI, ok := c.Get(key)
 //	if !ok {
 //		return false

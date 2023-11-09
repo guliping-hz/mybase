@@ -122,7 +122,7 @@ func GetRandomString(l int) string {
 	return string(res)
 }
 
-func LoadCfg(filename string, cfg interface{}) error {
+func LoadCfg(filename string, cfg any) error {
 	filePath, err := filepath.Abs(filepath.Dir(os.Args[0]))
 	if err != nil {
 		E("path err=%v", err)
@@ -171,26 +171,26 @@ func GetTomorrowMidnight() time.Time {
 
 /*
 *
-map[string]interface{} ->数据结构
-数据结构 -> map[string]interface{}
+map[string]any ->数据结构
+数据结构 -> map[string]any
 
-@param input []map[string]interface{} 或者 map[string]interface{} 或者 结构
+@param input []map[string]any 或者 map[string]any 或者 结构
 @param output 结构指针 或者 map指针
 
 @return nil无错误
 */
-func Decode(input, outputPtr interface{}) error {
+func Decode(input, outputPtr any) error {
 	return DecodeEx(input, outputPtr, false)
 }
 
 /*
 *
-map[string]interface{} ->结构指针
+map[string]any ->结构指针
 相比于Decode；DecodeRedis会自动转换需要的数据类型；
 
 	比如string转换成int。当然前提是该数据类型支持转换
 */
-func DecodeRedis(input, outputPtr interface{}) error {
+func DecodeRedis(input, outputPtr any) error {
 	return DecodeEx(input, outputPtr, true)
 }
 
@@ -198,7 +198,7 @@ func DecodeRedis(input, outputPtr interface{}) error {
 *
 @outputPtr 需要指针类型
 */
-func DecodeEx(input, outputPtr interface{}, weakly bool) error {
+func DecodeEx(input, outputPtr any, weakly bool) error {
 	//dataType := reflect.TypeOf(outputPtr) //获取数据类型
 	//if dataType.Kind() != reflect.Ptr {
 	//	return fmt.Errorf("need Ptr")
@@ -217,7 +217,7 @@ func DecodeEx(input, outputPtr interface{}, weakly bool) error {
 	return decoder.Decode(input)
 }
 
-func SameTransfer(input, outputPtr interface{}) {
+func SameTransfer(input, outputPtr any) {
 	var vOE reflect.Value
 	vO := reflect.ValueOf(outputPtr)
 	if vO.Kind() != reflect.Ptr {
@@ -239,7 +239,7 @@ func SameTransfer(input, outputPtr interface{}) {
 	vOE.Set(vIE)
 }
 
-func EasyGetMap(dict *sync.Map, key interface{}, output interface{}) bool {
+func EasyGetMap(dict *sync.Map, key any, output any) bool {
 	dataI, ok := dict.Load(key)
 	if !ok {
 		return false
@@ -252,7 +252,7 @@ func EasyGetMap(dict *sync.Map, key interface{}, output interface{}) bool {
 *
 同类型指针 简单数值相加。目前仅支持整数 int64 及以内。
 */
-func SameTypeAdd(dest, src interface{}) {
+func SameTypeAdd(dest, src any) {
 	valPtr := reflect.ValueOf(dest)
 	addPtr := reflect.ValueOf(src)
 

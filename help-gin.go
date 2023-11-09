@@ -33,11 +33,11 @@ func AbortWithMsg(ctx *gin.Context, code int32, msg string) {
 	AbortEx(ctx, code, nil, msg)
 }
 
-func AbortWithData(ctx *gin.Context, code int32, data interface{}) {
+func AbortWithData(ctx *gin.Context, code int32, data any) {
 	AbortEx(ctx, code, data, "")
 }
 
-func AbortEx(ctx *gin.Context, code int32, data interface{}, msg string) {
+func AbortEx(ctx *gin.Context, code int32, data any, msg string) {
 	if ctx == nil {
 		return
 	}
@@ -46,7 +46,7 @@ func AbortEx(ctx *gin.Context, code int32, data interface{}, msg string) {
 	ctx.PureJSON(http.StatusOK, gin.H{"code": code, "data": data, "msg": msg})
 }
 
-func EasyGet(ctx *gin.Context, key string, output interface{}) bool {
+func EasyGet(ctx *gin.Context, key string, output any) bool {
 	dataI, ok := ctx.Get(key)
 	if !ok {
 		return false
