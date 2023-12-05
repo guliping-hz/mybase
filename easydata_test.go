@@ -38,8 +38,12 @@ func TestEasyGet(t *testing.T) {
 	}
 
 	//测试buff数据存入和获取
-	h2 := H{"buff": []byte("abc中文123")}
+	h2 := H{"buff": []byte("abc中文123"), "gids": []int32{1, 2, 3, 4}}
 	buf := make([]byte, 0)
 	t.Log(h2.Get("buff", &buf))
 	t.Log(string(buf))
+
+	gids := make([]int64, 0)
+	t.Log(h2.Get("gids", &gids))
+	t.Log(gids)
 }

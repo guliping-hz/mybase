@@ -217,6 +217,10 @@ func DecodeEx(input, outputPtr any, weakly bool) error {
 	return decoder.Decode(input)
 }
 
+/*
+*
+outputPtr 如果是 切片int数组，建议传int64
+*/
 func SameTransfer(input, outputPtr any) {
 	var vOE reflect.Value
 	vO := reflect.ValueOf(outputPtr)
@@ -234,9 +238,29 @@ func SameTransfer(input, outputPtr any) {
 	}
 
 	if !vIE.CanConvert(vOE.Type()) {
-		panic(fmt.Sprintf("the input and output not the same type %s != %s", vIE.Type().Name(), vOE.Type()))
+
+		if vIE.Kind() == reflect.Slice && vOE.Kind() == reflect.Slice || vIE.Kind() == reflect.Array && vOE.Kind() == reflect.Array {
+			if vOE.Len() < vIE.Len() {
+				vOE.Grow(vIE.Len() - vOE.Len())
+				vOE.SetLen(vIE.Len())
+			}
+
+			for i := 0; i < vIE.Len(); i++ {
+				vIEi := vIE.Index(i)
+				vOEi := vOE.Index(i)
+
+				if vIEi.CanConvert(vOEi.Type()) {
+					vOEi.Set(vIEi.Convert(vOEi.Type()))
+				} else {
+					goto FAIL
+				}
+			}
+			return
+		}
+	FAIL:
+		panic(fmt.Sprintf("the input and output not the same type %s != %s", vIE.Type(), vOE.Type()))
 	}
-	vOE.Set(vIE)
+	vOE.Set(vIE.Convert(vOE.Type()))
 }
 
 func EasyGetMap(dict *sync.Map, key any, output any) bool {
