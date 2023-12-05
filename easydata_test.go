@@ -36,4 +36,10 @@ func TestEasyGet(t *testing.T) {
 	} else {
 		t.Log("d=", d)
 	}
+
+	//测试buff数据存入和获取
+	h2 := H{"buff": []byte("abc中文123")}
+	buf := make([]byte, 0)
+	t.Log(h2.Get("buff", &buf))
+	t.Log(string(buf))
 }
