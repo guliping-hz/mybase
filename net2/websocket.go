@@ -85,6 +85,11 @@ func (c *ClientWSocket) ReConnect(addr string) error {
 	return nil
 }
 
+// 支持复用
+func (c *ClientWSocket) SetConnect(conn *websocket.Conn) {
+	c.conn = conn
+}
+
 // @msgType TextMessage or BinaryMessage
 func WebAgent(conn *websocket.Conn, msgType int, ttl time.Duration, rTtl time.Duration, OnSocket OnSocket, ddb DataDecodeBase) *ClientWSocket {
 	if OnSocket == nil {

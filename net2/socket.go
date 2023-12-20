@@ -106,6 +106,11 @@ func (c *ClientSocket) ReConnect(addr string) error {
 	return nil
 }
 
+// 支持复用
+func (c *ClientSocket) SetConnect(conn net.Conn) {
+	c.conn = conn
+}
+
 func Agent(conn net.Conn, ttl time.Duration, rTtl time.Duration, OnSocket OnSocket, ddb DataDecodeBase) *ClientSocket {
 	if OnSocket == nil {
 		return nil
