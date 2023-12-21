@@ -110,12 +110,8 @@ func (c *ClientSocket) ReConnect(addr string) error {
 // 支持复用
 func (c *ClientSocket) SetConnect(conn net.Conn) {
 	c.conn = conn
-	c.sessionId, _ = strconv.ParseUint(fmt.Sprintf("%p", conn), 0, 64)
-	if c.SessionIdF == nil {
-		c.SessionIdF = func() uint64 {
-			return c.sessionId
-		}
-	}
+	c.SessionIdU, _ = strconv.ParseUint(fmt.Sprintf("%p", conn), 0, 64)
+	c.UnionIdStr = fmt.Sprintf("0-%d", c.SessionId()) //本机会话，用0打头
 }
 
 func Agent(conn net.Conn, ttl time.Duration, rTtl time.Duration, OnSocket OnSocket, ddb DataDecodeBase) *ClientSocket {

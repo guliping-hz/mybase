@@ -3,7 +3,6 @@ package net2
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"io"
 	"log"
 	"net"
@@ -115,9 +114,8 @@ type ClientBase struct {
 	chanSendDB  chan []byte
 	isConnected int32 //-1连接已关闭，0未连接，1已连接 大于1表示有发送数据占用着，暂时不能关闭
 	//sendUse     sync.Map
-
-	unionId    string
-	SessionIdF func() uint64
+	SessionIdU uint64
+	UnionIdStr string
 }
 
 func (c *ClientBase) Error() string {
@@ -129,17 +127,11 @@ func (c *ClientBase) Stack() []byte {
 }
 
 func (c *ClientBase) SessionId() uint64 {
-	if c.SessionIdF != nil {
-		return c.SessionIdF()
-	}
-	return 0
+	return c.SessionIdU
 }
 
 func (c *ClientBase) UnionId() string {
-	if c.unionId == "" {
-		c.unionId = fmt.Sprintf("0-%d", c.SessionId()) //本机会话，用0打头
-	}
-	return c.unionId
+	return c.UnionIdStr
 }
 
 func (c *ClientBase) Init(ddb DataDecodeBase, ttl, RTtl time.Duration, onSocket OnSocket, con Conn, socket iSocket) {
