@@ -39,13 +39,15 @@ type ServerSocket struct {
 
 	clientDataDecoder DataDecodeBase
 	listenAddress     string
+
+	agentPool sync.Pool
 }
 
 /*
 连接上服务器回调
 */
 func (s *ServerSocket) OnConnect(conn Conn) {
-	s.fd2Client.Store(conn.SessionId(), conn)
+	//s.fd2Client.Store(conn.SessionId(), conn) //移到accept里
 	s.onSocket.OnConnect(conn)
 }
 
@@ -53,8 +55,16 @@ func (s *ServerSocket) OnConnect(conn Conn) {
 只要我们曾经连接上服务器过，OnClose必定会回调。代表一个当前的socket已经关闭
 */
 func (s *ServerSocket) OnClose(conn Conn, byLocalNotRemote bool) {
-	s.fd2Client.Delete(conn.SessionId())
 	s.onSocket.OnClose(conn, byLocalNotRemote)
+
+	//取出来放到内存池中等待复用
+	agentV, ok := s.fd2Client.Load(conn.UnionId())
+	if ok {
+		agent, _ := agentV.(*ClientSocket)
+		s.agentPool.Put(agent)
+
+		s.fd2Client.Delete(conn.UnionId())
+	}
 }
 
 /*
@@ -132,16 +142,28 @@ loop:
 	for {
 		select {
 		case clientConn := <-s.chanAccept:
-			//@todo agent可以考虑弄个代理池，或许更高效一点
-			agent := Agent(clientConn, s.ttl, s.rTtl, s, s.clientDataDecoder)
+			var agent *ClientSocket
+			agentV := s.agentPool.Get()
+			if agentV != nil {
+				agent, _ = agentV.(*ClientSocket)
+			}
+
+			if agent == nil {
+				agent = Agent(clientConn, s.ttl, s.rTtl, s, s.clientDataDecoder)
+			} else {
+				agent.SetConnect(clientConn)
+			}
+
 			if agent != nil {
 				agent.Reactor()
 			}
+
+			s.fd2Client.Store(agent.UnionId(), agent)
 		case <-s.chanStop:
 			//关闭已经连接的
 			s.fd2Client.Range(func(key, value any) bool {
-				agent := value.(*Context)
-				agent.Con.SafeClose(false)
+				agent := value.(*ClientSocket)
+				agent.SafeClose(false)
 				return true
 			})
 			//关闭监听的socket
