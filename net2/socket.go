@@ -3,6 +3,7 @@ package net2
 import (
 	"fmt"
 	"net"
+	"strconv"
 	"time"
 )
 
@@ -18,7 +19,8 @@ func CheckTimeout(err error) bool {
 // *********ClientSocket
 type ClientSocket struct {
 	ClientBase
-	conn net.Conn
+	conn      net.Conn
+	sessionId uint64
 }
 
 func (c *ClientSocket) Close() error {
@@ -93,15 +95,14 @@ func (c *ClientSocket) Connect(addr string, ttl time.Duration, OnSocket OnSocket
 }
 
 func (c *ClientSocket) ReConnect(addr string) error {
-	var err error
-	c.conn, err = net.DialTimeout("tcp", addr, c.context.ttl)
+	conn, err := net.DialTimeout("tcp", addr, c.context.ttl)
 	if err != nil {
 		if CheckTimeout(err) {
 			return ErrTimeout
 		}
 		return err
 	}
-
+	c.SetConnect(conn)
 	c.Reactor()
 	return nil
 }
@@ -109,6 +110,12 @@ func (c *ClientSocket) ReConnect(addr string) error {
 // 支持复用
 func (c *ClientSocket) SetConnect(conn net.Conn) {
 	c.conn = conn
+	c.sessionId, _ = strconv.ParseUint(fmt.Sprintf("%p", conn), 0, 64)
+	if c.SessionIdF == nil {
+		c.SessionIdF = func() uint64 {
+			return c.sessionId
+		}
+	}
 }
 
 func Agent(conn net.Conn, ttl time.Duration, rTtl time.Duration, OnSocket OnSocket, ddb DataDecodeBase) *ClientSocket {
@@ -120,9 +127,9 @@ func Agent(conn net.Conn, ttl time.Duration, rTtl time.Duration, OnSocket OnSock
 		ddb = new(DataDecodeBinaryBigEnd)
 	}
 
-	csb := &ClientSocket{
-		conn: conn,
-	}
+	csb := &ClientSocket{}
+	csb.SetConnect(conn)
+
 	csb.Init(ddb, ttl, rTtl, OnSocket, csb, csb)
 	return csb
 }

@@ -23,9 +23,8 @@ type Context struct {
 
 	dataDecoder DataDecodeBase
 
-	ttl  time.Duration //写超时
-	rTtl time.Duration //读超时
-
+	ttl       time.Duration //写超时
+	rTtl      time.Duration //读超时
 	sessionId uint64
 }
 

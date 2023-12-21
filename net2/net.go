@@ -116,7 +116,8 @@ type ClientBase struct {
 	isConnected int32 //-1连接已关闭，0未连接，1已连接 大于1表示有发送数据占用着，暂时不能关闭
 	//sendUse     sync.Map
 
-	unionId string
+	unionId    string
+	SessionIdF func() uint64
 }
 
 func (c *ClientBase) Error() string {
@@ -128,7 +129,10 @@ func (c *ClientBase) Stack() []byte {
 }
 
 func (c *ClientBase) SessionId() uint64 {
-	return c.context.SessionId()
+	if c.SessionIdF != nil {
+		return c.SessionIdF()
+	}
+	return 0
 }
 
 func (c *ClientBase) UnionId() string {

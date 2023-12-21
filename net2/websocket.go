@@ -1,15 +1,18 @@
 package net2
 
 import (
+	"fmt"
 	"github.com/gorilla/websocket"
 	"net"
+	"strconv"
 	"time"
 )
 
 type ClientWSocket struct {
 	ClientBase
-	msgType int //TextMessage or BinaryMessage
-	conn    *websocket.Conn
+	msgType   int //TextMessage or BinaryMessage
+	conn      *websocket.Conn
+	sessionId uint64
 }
 
 // LocalAddr returns the local network address.
@@ -71,16 +74,14 @@ func (c *ClientWSocket) Connect(addr string, msgType int, ttl time.Duration, OnS
 }
 
 func (c *ClientWSocket) ReConnect(addr string) error {
-	var err error
-
-	c.conn, _, err = websocket.DefaultDialer.Dial(addr, nil)
+	conn, _, err := websocket.DefaultDialer.Dial(addr, nil)
 	if err != nil {
 		//if err1, ok := err.(*net.OpError); ok && err1.Timeout() {
 		//	return ErrTimeout
 		//}
 		return err
 	}
-
+	c.SetConnect(conn)
 	c.Reactor()
 	return nil
 }
@@ -88,6 +89,12 @@ func (c *ClientWSocket) ReConnect(addr string) error {
 // 支持复用
 func (c *ClientWSocket) SetConnect(conn *websocket.Conn) {
 	c.conn = conn
+	c.sessionId, _ = strconv.ParseUint(fmt.Sprintf("%p", conn), 0, 64)
+	if c.SessionIdF == nil {
+		c.SessionIdF = func() uint64 {
+			return c.sessionId
+		}
+	}
 }
 
 // @msgType TextMessage or BinaryMessage
@@ -101,8 +108,8 @@ func WebAgent(conn *websocket.Conn, msgType int, ttl time.Duration, rTtl time.Du
 	}
 	csb := &ClientWSocket{
 		msgType: msgType,
-		conn:    conn,
 	}
+	csb.SetConnect(conn)
 	csb.Init(ddb, ttl, rTtl, OnSocket, csb, csb)
 	csb.Reactor()
 	return csb
