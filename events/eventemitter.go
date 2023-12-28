@@ -37,7 +37,7 @@ type EventEmitters struct {
 	mutex sync.Mutex
 
 	dictHandlers map[string]*list.List
-	dictTargets  map[string]map[int64]*PosElement
+	dictTargets  map[string]map[int64][]*PosElement
 
 	catch func()
 }
@@ -118,20 +118,25 @@ func (e *EventEmitters) off(key string, session int64, target string) {
 			panic("please check the code; must not do this")
 		}
 
-		if element, ok := handlerMap[session]; ok {
-			handlers.Remove(element.pos)
+		if elements, ok := handlerMap[session]; ok {
+			for i := range elements {
+				handlers.Remove(elements[i].pos)
+			}
 			delete(e.dictTargets[target], session)
 		}
 		return
 	}
 
 	for k := range handlerMap {
-		element := handlerMap[k]
-		handlers, ok := e.dictHandlers[element.evt]
-		if !ok {
-			continue
+		elements := handlerMap[k]
+		for i := range elements {
+			handlers, ok := e.dictHandlers[elements[i].evt]
+			if !ok {
+				continue
+			}
+			handlers.Remove(elements[i].pos)
 		}
-		handlers.Remove(element.pos)
+
 	}
 	delete(e.dictTargets, target)
 }
@@ -145,7 +150,7 @@ func (e *EventEmitters) On(key string, handler Handler, target string) bool {
 	if e.dictHandlers == nil {
 		//初始化创建
 		e.dictHandlers = make(map[string]*list.List)
-		e.dictTargets = make(map[string]map[int64]*PosElement)
+		e.dictTargets = make(map[string]map[int64][]*PosElement)
 	}
 
 	handlers, ok := e.dictHandlers[key]
@@ -159,10 +164,12 @@ func (e *EventEmitters) On(key string, handler Handler, target string) bool {
 	handlerMap, ok := e.dictTargets[target]
 	if !ok {
 		//创建字典
-		handlerMap = make(map[int64]*PosElement)
+		handlerMap = make(map[int64][]*PosElement)
 		e.dictTargets[target] = handlerMap
 	}
-	handlerMap[handler.Address()] = &PosElement{pos, key}
+	hAddress := handler.Address()
+	//这里改成列表，是因为可能多个key共享一个handler。
+	handlerMap[hAddress] = append(handlerMap[hAddress], &PosElement{pos, key})
 	return true
 }
 

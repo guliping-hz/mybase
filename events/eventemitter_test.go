@@ -1,7 +1,6 @@
 package events
 
 import (
-	"fmt"
 	"testing"
 	"time"
 )
@@ -9,30 +8,36 @@ import (
 func TestEventEmitters(t *testing.T) {
 	event := Default()
 	event2 := Default()
-	fmt.Println(event, event2, event == event2)
+	t.Log(event, event2, event == event2)
 
 	event.On("a", func(data EventData) {
-		fmt.Println("on a:1 data=", data)
+		t.Log("on A:a 1 data=", data)
 	}, "A")
 	event.Once("a", func(data EventData) {
-		fmt.Println("on a:2 data=", data)
+		t.Log("on A:a 2 data=", data)
 	}, "A")
 
 	listenB := func(data EventData) {
-		fmt.Println("on b:3 data=", data)
+		t.Log("on B data=", data)
 	}
-	listenB2 := func(data EventData) {
-		fmt.Println("on b:4 data=", data)
+	listenC := func(data EventData) {
+		t.Log("on C data=", data)
 	}
 	event.On("b", listenB, "B")
-	event.On("b", listenB, "C")
-	event.On("b", listenB2, "C")
+	event.On("b", listenC, "C")
+	event.On("c", listenC, "C")
+	event.On("d", listenC, "C")
 
-	event.Emit("a", "hello a 1")
+	t.Log("OffByTarget C")
+	event.OffByTarget("C")
+	//event.Emit("a", "hello a")
+	event.Emit("b", "hello b")
+	event.Emit("c", "hello c")
+	event.Emit("d", "hello d")
 	//event.OffByTarget("A")
 	event.Clear()
 	//time.Sleep(time.Second)
-	event.Emit("a", "hello a 2")
+	event.Emit("b", "hello a 2")
 
 	//event.Emit("b", "hello b 1")
 	//event.Off("b", listenB, "B")
