@@ -238,8 +238,9 @@ func SameTransfer(input, outputPtr any) {
 	}
 
 	if !vIE.CanConvert(vOE.Type()) {
-
-		if vIE.Kind() == reflect.Slice && vOE.Kind() == reflect.Slice || vIE.Kind() == reflect.Array && vOE.Kind() == reflect.Array {
+		vIEKind := vIE.Kind()
+		vOEKind := vOE.Kind()
+		if (vIEKind == reflect.Slice || vIEKind == reflect.Array) && (vOEKind == reflect.Slice || vOEKind == reflect.Array) {
 			if vOE.Len() < vIE.Len() {
 				vOE.Grow(vIE.Len() - vOE.Len())
 				vOE.SetLen(vIE.Len())
@@ -248,6 +249,16 @@ func SameTransfer(input, outputPtr any) {
 			for i := 0; i < vIE.Len(); i++ {
 				vIEi := vIE.Index(i)
 				vOEi := vOE.Index(i)
+
+				//log.Println("vIEi type", vIEi.Kind().String())
+				//log.Println("vOEi type", vOEi.Kind().String())
+
+				if vIEi.Kind() == reflect.Interface {
+					vIEi = vIEi.Elem()
+				}
+
+				//log.Println("vIEi type", vIEi.Kind().String())
+				//log.Println("vOEi type", vOEi.Kind().String())
 
 				if vIEi.CanConvert(vOEi.Type()) {
 					vOEi.Set(vIEi.Convert(vOEi.Type()))
