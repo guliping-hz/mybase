@@ -100,6 +100,15 @@ func LogBig(format string, args ...any) {
 	if logBigFile == nil {
 		return
 	}
+
+	if info, err := logBigFile.Stat(); err == nil {
+		if info.Size() >= logBigLimitSize {
+			logBigFile.Close()
+			logBigMutex.Unlock() //解锁一下
+			initLogBigFile()
+			logBigMutex.Lock()
+		}
+	}
 	_, _ = logBigFile.WriteString(time.Now().Format(TimeFmtLog2) + " ") //时间
 	_, _ = fmt.Fprintf(logBigFile, format, args...)                     //写入内容
 }
