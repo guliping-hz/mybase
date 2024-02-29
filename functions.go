@@ -208,6 +208,7 @@ func DecodeEx(input, outputPtr any, weakly bool) error {
 		Result:           outputPtr,
 		TagName:          "json",
 		WeaklyTypedInput: weakly,
+		Squash:           true,
 	}
 	decoder, err := mapstructure.NewDecoder(config)
 	if err != nil {
