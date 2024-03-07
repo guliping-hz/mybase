@@ -473,8 +473,8 @@ class Setup(BaseSetup):
                 return False
 
         # # 重命名
-        self.remote_exec(f"cd {self.dir} && rm {self.exe}.bak")
-        self.remote_exec(f"cd {self.dir} && mv {self.exe} {self.exe}.bak")
+        # self.remote_exec(f"cd {self.dir} && rm {self.exe}.bak")
+        self.remote_exec(f"cd {self.dir} && mv {self.exe} {self.exe}.{int(time.time())}")
 
         # 上传文件
         exeFullPath = self.outDir + "/" + self.exe
