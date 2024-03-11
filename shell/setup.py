@@ -488,6 +488,7 @@ class Setup(BaseSetup):
             self.buildFile = args.build_file
 
             self.shellOn = args.shell
+            self.sudo = args.sudo and "sudo " or ""
             self.shellStart = args.shell_start
 
             self.cacheDirNames = args.cache_dir_names
@@ -500,17 +501,17 @@ class Setup(BaseSetup):
             return False
 
         # 创建服务器目录环境
-        if not self.remote_exec(f"mkdir -p {self.dir}"):
+        if not self.remote_exec(f"{self.sudo}mkdir -p {self.dir}"):
             return False
         for i in range(len(self.cacheDirNames)):
             subDir = self.dir + "/" + self.cacheDirNames[i]
-            if not self.remote_exec(f"mkdir -p {subDir}"):
+            if not self.remote_exec(f"{self.sudo}mkdir -p {subDir}"):
                 return False
 
         # # 重命名
-        # self.remote_exec(f"cd {self.dir} && rm {self.exe}.bak")
+        # self.remote_exec(f"{self.sudo}cd {self.dir} && rm {self.exe}.bak")
         self.remote_exec(
-            f"cd {self.dir} && mv {self.exe} {self.exe}.{int(time.time())}"
+            f"{self.sudo}cd {self.dir} && mv {self.exe} {self.exe}.{int(time.time())}"
         )
 
         # 上传文件
@@ -532,22 +533,22 @@ class Setup(BaseSetup):
 
             # 替换
             if not self.remote_exec(
-                f'sed -i "s/exeNameReplace/{self.exe}/g" {self.dir}/start.sh'
+                f'{self.sudo}sed -i "s/exeNameReplace/{self.exe}/g" {self.dir}/start.sh'
             ):
                 return False
 
             if not self.remote_exec(
-                f'sed -i "s/exeNameReplace/{self.exe}/g" {self.dir}/end.sh'
+                f'{self.sudo}sed -i "s/exeNameReplace/{self.exe}/g" {self.dir}/end.sh'
             ):
                 return False
 
             screenName = self.exe + self.screen
             if not self.remote_exec(
-                f'sed -i "s/screenNameReplace/{screenName}/g" {self.dir}/screen.sh'
+                f'{self.sudo}sed -i "s/screenNameReplace/{screenName}/g" {self.dir}/screen.sh'
             ):
                 return False
             if not self.remote_exec(
-                f'sed -i "s#linuxDirReplace#{self.dir}#g" {self.dir}/screen.sh'
+                f'{self.sudo}sed -i "s#linuxDirReplace#{self.dir}#g" {self.dir}/screen.sh'
             ):
                 return False
 
@@ -568,10 +569,10 @@ class Setup(BaseSetup):
 
         if self.shellOn:
             # 关闭
-            if not self.remote_exec(f"cd {self.dir} && chmod +xxx ./restart.sh"):
+            if not self.remote_exec(f"{self.sudo}cd {self.dir} && chmod +xxx ./restart.sh"):
                 return False
             if not self.remote_exec(
-                f"cd {self.dir} && chmod +xxx ./end.sh && ./end.sh"
+                f"{self.sudo}cd {self.dir} && chmod +xxx ./end.sh && ./end.sh"
             ):
                 return False
 
@@ -580,10 +581,10 @@ class Setup(BaseSetup):
             time.sleep(2)
 
             # 启动
-            if not self.remote_exec(f"cd {self.dir} && chmod +xxx ./start.sh"):
+            if not self.remote_exec(f"{self.sudo}cd {self.dir} && chmod +xxx ./start.sh"):
                 return False
             if not self.remote_exec(
-                f"cd {self.dir} && chmod +xxx ./screen.sh && ./screen.sh"
+                f"{self.sudo}cd {self.dir} && chmod +xxx ./screen.sh && ./screen.sh"
             ):
                 return False
 
@@ -592,7 +593,7 @@ class Setup(BaseSetup):
             crontabPath = self.dir + "/" + self.exe + ".crontab"
             if not self.remote_put(self.crontab, crontabPath):
                 return False
-            if not self.remote_exec(f"crontab {crontabPath}"):
+            if not self.remote_exec(f"{self.sudo}crontab {crontabPath}"):
                 return False
 
         my_print(f"setup finished {self.ip}:{self.dir}/{self.exe}")
@@ -618,6 +619,9 @@ def parse_to_setup():
     # 这个True False的只能用两个减
     parser.add_argument(
         "--shell", action=argparse.BooleanOptionalAction, help="是否上传通用shell脚本"
+    )
+    parser.add_argument(
+        "--sudo", action=argparse.BooleanOptionalAction, help="执行命令前sudo吗"
     )
     parser.add_argument("-cache_dir_names", nargs="*", help="远程备用目录名,以dir指定的目录为当前前缀")
     parser.add_argument("-envs", nargs="*", help="环境配置文件。例:本地文件名,服务器文件名,1目录/0文件")
