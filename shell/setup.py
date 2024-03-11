@@ -48,25 +48,59 @@ import paramiko
 
 
 def build_go(
-    srcDir: str, targetDir: str, targetName: str, platform: str = "linux"
+    srcDir: str | None,
+    srcFile: str | None,
+    targetDir: str,
+    targetName: str,
+    platform: str = "linux",
 ) -> bool:
     """
+    @srcDir 指定编译目录
+    @srcFile 指定编译文件
     @platform=linux|windows|darwin
     """
+    my_print(f"Go program to compile dir={srcDir} file={srcFile}")
     ret = False
     try:
         my_print("compile...")
         os.environ["GOARCH"] = "amd64"
         os.environ["GOOS"] = platform
         os.environ["GOTRACEBACK"] = "all"
-        subprocess.check_output(
-            ["go", "build", "-o", f"{targetDir}/{targetName}", "-C", srcDir]
-        )
-        my_print(f"Go program compiled successfully to {targetDir}/{targetName}")
-        ret = True
+
+        if srcDir and srcDir != "":
+            # my_print("srcDir")
+            commond = ["go", "build", "-o", f"{targetDir}/{targetName}", "-C", srcDir]
+            # my_print(commond)
+            subprocess.check_output(commond)
+            my_print(f"Go program compiled successfully to {targetDir}/{targetName}")
+            ret = True
+        elif srcFile and srcFile != "":
+            # my_print("srcFile")
+            srcDir = os.path.dirname(srcFile)
+            srcFileBase = os.path.basename(srcFile)
+            # commond = ["cd", srcDir]
+            # my_print(commond)
+            # subprocess.check_output(commond)
+            commond = [
+                "go",
+                "build",
+                "-o",
+                f"{targetDir}/{targetName}",
+                "-C",
+                srcDir,
+                srcFileBase,
+            ]
+            my_print(commond)
+            subprocess.check_output(commond)
+            my_print(f"Go program compiled successfully to {targetDir}/{targetName}")
+            ret = True
+        else:
+            my_print(f"Go program compiled failed not set build dir or file")
+            ret = False
     except subprocess.CalledProcessError as e:
         my_print("Error compiling Go program:", e)
     finally:
+        my_print(f"end compiling Go program: {ret}")
         del os.environ["GOARCH"]
         del os.environ["GOOS"]
         del os.environ["GOTRACEBACK"]
@@ -451,6 +485,7 @@ class Setup(BaseSetup):
 
         if args:
             self.buildDir = args.build_dir
+            self.buildFile = args.build_file
 
             self.shellOn = args.shell
             self.shellStart = args.shell_start
@@ -461,7 +496,7 @@ class Setup(BaseSetup):
 
     def start(self) -> bool:
         # 编译代码
-        if not build_go(self.buildDir, self.outDir, self.exe):
+        if not build_go(self.buildDir, self.buildFile, self.outDir, self.exe):
             return False
 
         # 创建服务器目录环境
@@ -474,13 +509,11 @@ class Setup(BaseSetup):
 
         # # 重命名
         # self.remote_exec(f"cd {self.dir} && rm {self.exe}.bak")
-        self.remote_exec(f"cd {self.dir} && mv {self.exe} {self.exe}.{int(time.time())}")
+        self.remote_exec(
+            f"cd {self.dir} && mv {self.exe} {self.exe}.{int(time.time())}"
+        )
 
         # 上传文件
-        exeFullPath = self.outDir + "/" + self.exe
-        if not self.remote_put(exeFullPath, self.dir):  # + "/" + self.exe
-            return False
-
         if self.shellOn:
             # 上传
             shells = [
@@ -527,6 +560,12 @@ class Setup(BaseSetup):
             if not self.remote_put(here, self.dir + "/" + there, isDir):
                 return False
 
+        # 最后上传EXE
+        my_print("上传EXE,觉得慢可以直接终止!")
+        exeFullPath = self.outDir + "/" + self.exe
+        if not self.remote_put(exeFullPath, self.dir):  # + "/" + self.exe
+            return False
+
         if self.shellOn:
             # 关闭
             if not self.remote_exec(f"cd {self.dir} && chmod +xxx ./restart.sh"):
@@ -571,7 +610,8 @@ def parse_to_setup():
     parser.add_argument("-exe", required=True, help="可执行程序名")
     parser.add_argument("-screen", default="", help="screen名后缀,防止冲突")
     parser.add_argument("-dir", required=True, help="远程目录")
-    parser.add_argument("-build_dir", required=True, help="编译目录")
+    parser.add_argument("-build_dir", help="编译目录")  # 与编译文件二选一
+    parser.add_argument("-build_file", help="编译文件")  # 与编译目录二选一
     parser.add_argument("-out_dir", required=True, help="编译输出目录")
     parser.add_argument("-user", default="root", help="远程用户")
 
