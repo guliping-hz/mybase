@@ -503,6 +503,11 @@ class Setup(BaseSetup):
         # 创建服务器目录环境
         if not self.remote_exec(f"{self.sudo}mkdir -p {self.dir}"):
             return False
+
+        # 给目录权限
+        if not self.remote_exec(f"{self.sudo}chmod 777 {self.dir}"):
+            return False
+
         for i in range(len(self.cacheDirNames)):
             subDir = self.dir + "/" + self.cacheDirNames[i]
             if not self.remote_exec(f"{self.sudo}mkdir -p {subDir}"):
@@ -511,7 +516,7 @@ class Setup(BaseSetup):
         # # 重命名
         # self.remote_exec(f"{self.sudo}cd {self.dir} && rm {self.exe}.bak")
         self.remote_exec(
-            f"{self.sudo}cd {self.dir} && mv {self.exe} {self.exe}.{int(time.time())}"
+            f"cd {self.dir} && mv {self.exe} {self.exe}.{int(time.time())}"
         )
 
         # 上传文件
@@ -569,10 +574,10 @@ class Setup(BaseSetup):
 
         if self.shellOn:
             # 关闭
-            if not self.remote_exec(f"{self.sudo}cd {self.dir} && chmod +xxx ./restart.sh"):
+            if not self.remote_exec(f"cd {self.dir} && chmod +xxx ./restart.sh"):
                 return False
             if not self.remote_exec(
-                f"{self.sudo}cd {self.dir} && chmod +xxx ./end.sh && ./end.sh"
+                f"cd {self.dir} && chmod +xxx ./end.sh && ./end.sh"
             ):
                 return False
 
@@ -581,10 +586,10 @@ class Setup(BaseSetup):
             time.sleep(2)
 
             # 启动
-            if not self.remote_exec(f"{self.sudo}cd {self.dir} && chmod +xxx ./start.sh"):
+            if not self.remote_exec(f"cd {self.dir} && chmod +xxx ./start.sh"):
                 return False
             if not self.remote_exec(
-                f"{self.sudo}cd {self.dir} && chmod +xxx ./screen.sh && ./screen.sh"
+                f"cd {self.dir} && chmod +xxx ./screen.sh && ./screen.sh"
             ):
                 return False
 
