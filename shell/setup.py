@@ -401,7 +401,7 @@ class BaseSetup:
 """
 
     def get_start():
-        return f"""#!/bin/bash
+        return """#!/bin/bash
 
 echo "use exeNameReplace"
 #增加执行权限
@@ -447,7 +447,7 @@ stop15 exeNameReplace
 """
 
     def get_restart():
-        return f"""#!/bin/bash
+        return """#!/bin/bash
 
 #上传后，如果运行报错。更改回车符：goland->File->File Properties->Line Separators->LF-Unix & macOs
 
