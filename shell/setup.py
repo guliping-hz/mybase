@@ -512,6 +512,9 @@ class Setup(BaseSetup):
             subDir = self.dir + "/" + self.cacheDirNames[i]
             if not self.remote_exec(f"{self.sudo}mkdir -p {subDir}"):
                 return False
+            # 给目录权限
+            if not self.remote_exec(f"{self.sudo}chmod 777 {subDir}"):
+                return False
 
         # # 重命名
         # self.remote_exec(f"{self.sudo}cd {self.dir} && rm {self.exe}.bak")
