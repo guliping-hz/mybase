@@ -455,10 +455,10 @@ stop15 exeNameReplace
 sudo chmod +xxx $(pwd)/start.sh
 sudo chmod +xxx $(pwd)/end.sh
 
-$(pwd)/end.sh
+sudo $(pwd)/end.sh
 echo "sleep 2s..."
 sleep 2s
-$(pwd)/start.sh
+sudo $(pwd)/start.sh
 """
 
     def get_screen():
