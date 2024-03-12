@@ -401,11 +401,11 @@ class BaseSetup:
 """
 
     def get_start():
-        return """#!/bin/bash
+        return f"""#!/bin/bash
 
 echo "use exeNameReplace"
 #增加执行权限
-chmod +xxx "$(pwd)/exeNameReplace"
+sudo chmod +xxx "$(pwd)/exeNameReplace"
 
 #exe后面带上 & 防止关闭终端，就把go进程结束掉;而且必须以shell脚本的形式启动 & 才能起作用。
 #直接在终端中敲下面的命令关掉终端，进程还是结束了。。
@@ -433,7 +433,7 @@ function stop(){
     pid=$(ps -aux | grep "$(pwd)/$1" | grep -v "grep" | awk '{print $2}')
     if [ -n "$pid" ]; then
         echo "stop $1 pid: $pid"
-        echo "$pid" | xargs kill "$2"
+        echo "$pid" | sudo xargs kill "$2"
     else
         echo "No process:$1 to kill"
     fi
@@ -447,13 +447,13 @@ stop15 exeNameReplace
 """
 
     def get_restart():
-        return """#!/bin/bash
+        return f"""#!/bin/bash
 
 #上传后，如果运行报错。更改回车符：goland->File->File Properties->Line Separators->LF-Unix & macOs
 
 #通用重启当前目录的进程。
-chmod +xxx $(pwd)/start.sh
-chmod +xxx $(pwd)/end.sh
+sudo chmod +xxx $(pwd)/start.sh
+sudo chmod +xxx $(pwd)/end.sh
 
 $(pwd)/end.sh
 echo "sleep 2s..."
@@ -577,10 +577,12 @@ class Setup(BaseSetup):
 
         if self.shellOn:
             # 关闭
-            if not self.remote_exec(f"cd {self.dir} && chmod +xxx ./restart.sh"):
+            if not self.remote_exec(
+                f"cd {self.dir} && {self.sudo}chmod +xxx ./restart.sh"
+            ):
                 return False
             if not self.remote_exec(
-                f"cd {self.dir} && chmod +xxx ./end.sh && ./end.sh"
+                f"cd {self.dir} && {self.sudo}chmod +xxx ./end.sh && ./end.sh"
             ):
                 return False
 
@@ -589,10 +591,12 @@ class Setup(BaseSetup):
             time.sleep(2)
 
             # 启动
-            if not self.remote_exec(f"cd {self.dir} && chmod +xxx ./start.sh"):
+            if not self.remote_exec(
+                f"cd {self.dir} && {self.sudo}chmod +xxx ./start.sh"
+            ):
                 return False
             if not self.remote_exec(
-                f"cd {self.dir} && chmod +xxx ./screen.sh && ./screen.sh"
+                f"cd {self.dir} && {self.sudo}chmod +xxx ./screen.sh && ./screen.sh"
             ):
                 return False
 
