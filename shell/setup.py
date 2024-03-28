@@ -12,6 +12,7 @@ import http.client
 import hashlib
 import urllib.request, ssl, http.cookiejar
 import json
+import select
 
 
 def my_print(*args, end: str | None = None, nofile: bool = False):
@@ -124,16 +125,23 @@ def remote_exec(ip: str, command: str, port: int = 22, user: str = "root") -> bo
         # 打印命令输出
         my_print(command, "=>")
 
-        while True:
-            out1 = stdout.read().decode()
-            err1 = stderr.read().decode()
-            if out1 != "":
-                my_print(out1, end="", nofile=True)
-            elif err1 != "":
-                my_print(err1, end="", nofile=True)
-            else:
-                break
+        # 循环读取输出直到输出流关闭
+        while not stdout.channel.exit_status_ready():
+            # 读取标准输出
+            output = stdout.readline()
+            if output:
+                print(output.strip())
+        # 读取剩余的标准输出
+        remaining_output = stdout.read().decode()
+        if remaining_output:
+            print(remaining_output.strip())
+
+        # # 读取标准错误
+        error = stderr.read().decode()
+        if error:
+            my_print("Error:", error, end="", nofile=True)
         my_print(nofile=True)
+
         # # 使用scp模块上传文件到远程服务器
         # with SCPClient(ssh_client.get_transport()) as scp:
         #     scp.put("local_file.txt", "remote_file.txt")  # 上传文件
@@ -142,7 +150,7 @@ def remote_exec(ip: str, command: str, port: int = 22, user: str = "root") -> bo
         #     # scp.get("remote_file.txt", "local_file.txt")  # 下载文件
         ret = True
     except Exception as e:
-        my_print("Error remote_exec", command, ":", e)
+        my_print("Error remote_exec", command, ":", e, ret)
     finally:
         # 关闭SSH连接
         ssh_client.close()
