@@ -554,6 +554,17 @@ class Setup(BaseSetup):
                     return False
                 os.remove(thePath)
 
+        if self.shellStart != "":
+            if not self.remote_put(self.shellStart, self.dir):  # + "/start.sh"
+                return False
+
+        for i in range(0, len(self.envs), 3):
+            here, there, isDir = self.envs[i], self.envs[i + 1], self.envs[i + 2] == "1"
+            if not self.remote_put(here, self.dir + "/" + there, isDir):
+                return False
+
+        #调整替换顺序，支持 envs 配置自定义start.sh脚本文件，并支持模板更改其中的名字
+        if self.shellOn:
             # 替换
             if not self.remote_exec(
                 f'sudo sed -i "s/exeNameReplace/{self.exe}/g" {self.dir}/start.sh'
@@ -573,15 +584,6 @@ class Setup(BaseSetup):
             if not self.remote_exec(
                 f'sudo sed -i "s#linuxDirReplace#{self.dir}#g" {self.dir}/screen.sh'
             ):
-                return False
-
-        if self.shellStart != "":
-            if not self.remote_put(self.shellStart, self.dir):  # + "/start.sh"
-                return False
-
-        for i in range(0, len(self.envs), 3):
-            here, there, isDir = self.envs[i], self.envs[i + 1], self.envs[i + 2] == "1"
-            if not self.remote_put(here, self.dir + "/" + there, isDir):
                 return False
 
         # 最后上传EXE

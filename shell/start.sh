@@ -13,5 +13,5 @@ export GOTRACEBACK=crash
 
 #多个服务只是目录的不同
 #必须重定向到/dev/null，否则远程启动时，关闭终端，进程也会结束
-$(pwd)/exeNameReplace &
-#$(pwd)/exeNameReplace > /dev/null &
+sudo $(pwd)/exeNameReplace &
+#sudo $(pwd)/exeNameReplace > /dev/null &
