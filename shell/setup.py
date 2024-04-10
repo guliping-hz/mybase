@@ -150,7 +150,7 @@ def remote_exec(ip: str, command: str, port: int = 22, user: str = "root") -> bo
         #     # scp.get("remote_file.txt", "local_file.txt")  # 下载文件
         ret = True
     except Exception as e:
-        my_print("Error remote_exec", command, ":", e, ret)
+        my_print("Error remote_exec:", command, ":", e, ret)
     finally:
         # 关闭SSH连接
         ssh_client.close()
@@ -176,7 +176,7 @@ def remote_put(
         ssh_client.connect(ip, port, user)
         # 确保目录存在
         destDir = os.path.dirname(dest)
-        stdin, stdout, stderr = ssh_client.exec_command(f"mkdir -p {destDir}")
+        stdin, stdout, stderr = ssh_client.exec_command(f"sudo mkdir -p {destDir}")
         out1 = stdout.read().decode()
         err1 = stderr.read().decode()
         if out1 != "":
@@ -503,31 +503,38 @@ class Setup(BaseSetup):
             self.envs = args.envs
             self.crontab = args.crontab
 
+    def grant_privilege(self, targetDir: str) -> bool:
+        # 给目录权限
+        if self.user != "root":
+            if not self.remote_exec(f"sudo chown {self.user} {targetDir}"):
+                return False
+        if not self.remote_exec(f"sudo chmod 751 {targetDir}"):
+            return False
+        return True
+
     def start(self) -> bool:
         # 编译代码
         if not build_go(self.buildDir, self.buildFile, self.outDir, self.exe):
             return False
 
         # 创建服务器目录环境
-        if not self.remote_exec(f"{self.sudo}mkdir -p {self.dir}"):
+        if not self.remote_exec(f"sudo mkdir -p {self.dir}"):
             return False
 
-        # 给目录权限
-        if not self.remote_exec(f"{self.sudo}chmod 777 {self.dir}"):
+        if not self.grant_privilege(self.dir):
             return False
 
         for i in range(len(self.cacheDirNames)):
             subDir = self.dir + "/" + self.cacheDirNames[i]
-            if not self.remote_exec(f"{self.sudo}mkdir -p {subDir}"):
+            if not self.remote_exec(f"sudo mkdir -p {subDir}"):
                 return False
-            # 给目录权限
-            if not self.remote_exec(f"{self.sudo}chmod 777 {subDir}"):
+            if not self.grant_privilege(subDir):
                 return False
 
         # # 重命名
-        # self.remote_exec(f"{self.sudo}cd {self.dir} && rm {self.exe}.bak")
+        # self.remote_exec(f"sudo cd {self.dir} && rm {self.exe}.bak")
         self.remote_exec(
-            f"cd {self.dir} && mv {self.exe} {self.exe}.{int(time.time())}"
+            f"cd {self.dir} && sudo mv {self.exe} {self.exe}.{int(time.time())}"
         )
 
         # 上传文件
@@ -549,22 +556,22 @@ class Setup(BaseSetup):
 
             # 替换
             if not self.remote_exec(
-                f'{self.sudo}sed -i "s/exeNameReplace/{self.exe}/g" {self.dir}/start.sh'
+                f'sudo sed -i "s/exeNameReplace/{self.exe}/g" {self.dir}/start.sh'
             ):
                 return False
 
             if not self.remote_exec(
-                f'{self.sudo}sed -i "s/exeNameReplace/{self.exe}/g" {self.dir}/end.sh'
+                f'sudo sed -i "s/exeNameReplace/{self.exe}/g" {self.dir}/end.sh'
             ):
                 return False
 
             screenName = self.exe + self.screen
             if not self.remote_exec(
-                f'{self.sudo}sed -i "s/screenNameReplace/{screenName}/g" {self.dir}/screen.sh'
+                f'sudo sed -i "s/screenNameReplace/{screenName}/g" {self.dir}/screen.sh'
             ):
                 return False
             if not self.remote_exec(
-                f'{self.sudo}sed -i "s#linuxDirReplace#{self.dir}#g" {self.dir}/screen.sh'
+                f'sudo sed -i "s#linuxDirReplace#{self.dir}#g" {self.dir}/screen.sh'
             ):
                 return False
 
@@ -585,12 +592,10 @@ class Setup(BaseSetup):
 
         if self.shellOn:
             # 关闭
-            if not self.remote_exec(
-                f"cd {self.dir} && {self.sudo}chmod +xxx ./restart.sh"
-            ):
+            if not self.remote_exec(f"cd {self.dir} && sudo chmod +xxx ./restart.sh"):
                 return False
             if not self.remote_exec(
-                f"cd {self.dir} && {self.sudo}chmod +xxx ./end.sh && ./end.sh"
+                f"cd {self.dir} && sudo chmod +xxx ./end.sh && ./end.sh"
             ):
                 return False
 
@@ -599,12 +604,10 @@ class Setup(BaseSetup):
             time.sleep(2)
 
             # 启动
-            if not self.remote_exec(
-                f"cd {self.dir} && {self.sudo}chmod +xxx ./start.sh"
-            ):
+            if not self.remote_exec(f"cd {self.dir} && sudo chmod +xxx ./start.sh"):
                 return False
             if not self.remote_exec(
-                f"cd {self.dir} && {self.sudo}chmod +xxx ./screen.sh && ./screen.sh"
+                f"cd {self.dir} && sudo chmod +xxx ./screen.sh && ./screen.sh"
             ):
                 return False
 
@@ -613,7 +616,7 @@ class Setup(BaseSetup):
             crontabPath = self.dir + "/" + self.exe + ".crontab"
             if not self.remote_put(self.crontab, crontabPath):
                 return False
-            if not self.remote_exec(f"{self.sudo}crontab {crontabPath}"):
+            if not self.remote_exec(f"sudo crontab {crontabPath}"):
                 return False
 
         my_print(f"setup finished {self.ip}:{self.dir}/{self.exe}")
