@@ -35,7 +35,7 @@ func InitLogBigFile(isProd bool, dir, prefix string, limitSize int64, limitDay t
 	logBigLimitSize = limitSize
 	logBigLimitDay = limitDay
 
-	if err := os.MkdirAll(logBigDir, os.ModeDir); err != nil {
+	if err := os.MkdirAll(logBigDir, 0744); err != nil {
 		return err
 	}
 

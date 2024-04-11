@@ -151,7 +151,7 @@ func initLogDir(dir, fileName string, day int, ctx context.Context) error {
 	logName = fileName
 	logSaveDay = time.Duration(day) * 24 * time.Hour
 
-	if err := os.MkdirAll(logDir, os.ModeDir); err != nil {
+	if err := os.MkdirAll(logDir /*os.ModeDir*/, 0744); err != nil {
 		return err
 	}
 	ctxLog = ctx
