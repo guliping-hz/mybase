@@ -10,7 +10,7 @@ function stop(){
     pid=$(ps -aux | grep "$(pwd)/$1" | grep -v "grep" | awk '{print $2}')
     if [ -n "$pid" ]; then
         echo "stop $1 pid: $pid"
-        echo "$pid" | xargs kill "$2"
+        echo "$pid" | sudo xargs kill "$2"
     else
         echo "No process:$1 to kill"
     fi
