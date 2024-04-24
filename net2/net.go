@@ -135,6 +135,20 @@ func (c *ClientBase) UnionId() string {
 }
 
 func (c *ClientBase) Init(ddb DataDecodeBase, ttl, RTtl time.Duration, onSocket OnSocket, con Conn, socket iSocket) {
+	//如果自己本身是在运行的，那么先关闭一下自己。
+	if c.context != nil && c.context.Con != nil {
+		c.context.Con.SafeClose(true)
+
+		//等待关闭结束
+	waitFinish:
+		for {
+			select {
+			case <-c.context.Done():
+				break waitFinish
+			}
+		}
+	}
+
 	c.context = &Context{}
 	c.context.readDB = &bytes.Buffer{}
 	c.context.dataDecoder = ddb
@@ -341,7 +355,10 @@ func (c *ClientBase) sendRoutine() {
 		select {
 		case buf := <-c.chanSendDB:
 			//fmt.Printf("session=%d sendRoutine 1\n", c.SessionId())
+			//if c.context.socket != nil {
+			//如果client本身再运行中，这时候重新Init可能会导致socket为nil，所以在Init中加了判断，先正常关闭后再用。
 			c.context.socket.sendEx(buf)
+			//}
 			//fmt.Printf("session=%d sendRoutine 2\n", c.SessionId())
 		case <-c.context.Done():
 			//close(c.chanSendDB) //这里是配合实验二
