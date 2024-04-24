@@ -285,6 +285,25 @@ class BtApi:
         # 解析JSON数据
         return json.loads(result)
 
+    # 取面板网站
+    def get_sites(self):
+        # 拼接URL地址
+        url = self.__BT_PANEL + "/data?action=getData"
+
+        # 准备POST数据
+        param = self.__get_key_data()  # 取签名
+        param["table"] = "sites"
+        param["limit"] = ""
+        param["p"] = "1"
+        param["search"] = ""
+        param["type"] = "0"
+
+        # 请求面板接口
+        result = http_with_cookie(url, param, 1800)
+
+        # 解析JSON数据
+        return json.loads(result)
+
     # 系统状态
     def get_system_total(self):
         url = self.__BT_PANEL + "/system?action=GetSystemTotal"
@@ -320,6 +339,29 @@ class BtApi:
                 my_print(f"{domain} 建站成功")
                 return jsonResult
         my_print(f"{domain} 建站失败", result)
+        return None
+
+    # 申请SSL证书
+    def apply_cert_api(
+        self,
+        id: int,
+        autoTo: int,
+        domains: list[str],
+    ):
+        url = self.__BT_PANEL + "/acme?action=apply_cert_api"
+        param = self.__get_key_data()  # 取签名
+        param["domains"] = json.dumps(domains)
+        param["auth_type"] = "http"
+        param["auth_to"] = str(autoTo)
+        param["auto_wildcard"] = str(0)
+        param["id"] = str(id)
+        result = http_with_cookie(url, param, 1800)
+        if result:
+            jsonResult = json.loads(result)
+            if jsonResult["siteStatus"]:
+                my_print(f"{domains} 证书申请成功")
+                return jsonResult
+        my_print(f"{domains} 证书申请失败")
         return None
 
     # 设置网站根路径
@@ -563,7 +605,7 @@ class Setup(BaseSetup):
             if not self.remote_put(here, self.dir + "/" + there, isDir):
                 return False
 
-        #调整替换顺序，支持 envs 配置自定义start.sh脚本文件，并支持模板更改其中的名字
+        # 调整替换顺序，支持 envs 配置自定义start.sh脚本文件，并支持模板更改其中的名字
         if self.shellOn:
             # 替换
             if not self.remote_exec(
