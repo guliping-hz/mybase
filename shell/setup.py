@@ -13,6 +13,7 @@ import hashlib
 import urllib.request, ssl, http.cookiejar
 import json
 import select
+import socket
 
 
 def my_print(*args, end: str | None = None, nofile: bool = False):
@@ -44,8 +45,10 @@ def check_and_install_dependency(p_import: str, package: str | None = None):
 # 检查并安装缺少的依赖项
 check_and_install_dependency("paramiko")
 check_and_install_dependency("scp")
+check_and_install_dependency("socks", "PySocks")
 from scp import SCPClient
 import paramiko
+import socks
 
 
 def build_go(
@@ -108,7 +111,22 @@ def build_go(
         return ret
 
 
-def remote_exec(ip: str, command: str, port: int = 22, user: str = "root") -> bool:
+def remote_exec(
+    ip: str,
+    command: str,
+    port: int = 22,
+    user: str = "root",
+    socksHost: str = "localhost",
+    socksPort: int = 0,
+) -> bool:
+    sock = None
+    if socksPort:
+        # print(f"use socks {socksHost}:{socksPort}")
+        # socks.set_default_proxy(socks.SOCKS5, socksHost, socksPort)
+        sock = socks.socksocket()
+        sock.set_proxy(socks.SOCKS5, socksHost, socksPort, False)
+        sock.connect((ip, port))
+
     # 创建SSH客户端
     ssh_client = paramiko.SSHClient()
     ssh_client.load_system_host_keys()
@@ -117,7 +135,7 @@ def remote_exec(ip: str, command: str, port: int = 22, user: str = "root") -> bo
     ret = False
     try:
         # 连接到远程服务器
-        ssh_client.connect(ip, port, user)
+        ssh_client.connect(ip, port, user, sock=sock)
 
         # 在远程服务器上执行命令
         stdin, stdout, stderr = ssh_client.exec_command(command)
@@ -164,7 +182,21 @@ def remote_put(
     isDir: bool = False,
     port: int = 22,
     user: str = "root",
+    socksHost: str = "localhost",
+    socksPort: int = 0,
 ) -> bool:
+    """
+    :param socksHost 代理host
+    :param socksPort 代理端口
+    """
+    sock = None
+    if socksPort:  # 过滤 None 和 0
+        print(f"use socks {socksHost}:{socksPort}")
+        # socks.set_default_proxy(socks.SOCKS5, socksHost, socksPort)
+        sock = socks.socksocket()
+        sock.set_proxy(socks.SOCKS5, socksHost, socksPort, False)
+        sock.connect((ip, port))
+
     # 创建SSH客户端
     ssh_client = paramiko.SSHClient()
     ssh_client.load_system_host_keys()
@@ -173,7 +205,7 @@ def remote_put(
     ret = False
     try:
         # 连接到远程服务器
-        ssh_client.connect(ip, port, user)
+        ssh_client.connect(ip, port, user, sock=sock)
         # 确保目录存在
         destDir = os.path.dirname(dest)
         stdin, stdout, stderr = ssh_client.exec_command(f"sudo mkdir -p {destDir}")
@@ -431,16 +463,38 @@ class BtApi:
 
 
 class BaseSetup:
-    def __init__(self, ip: str, port: int = 22, user: str = "root") -> None:
+    def __init__(
+        self,
+        ip: str,
+        port: int = 22,
+        user: str = "root",
+        vpn_host: str = "localhost",
+        vpn_port: int = 0,
+    ) -> None:
         self.ip = ip
         self.port = port
         self.user = user
+
+        self.socksHost = vpn_host
+        self.socksPort = vpn_port
+
+        if self.socksPort:
+            print(f"use socks {self.socksHost}:{self.socksPort}")
 
     def remote_exec(self, commond: str):
         return remote_exec(self.ip, commond, self.port, self.user)
 
     def remote_put(self, src: str, dest: str, isDir: bool = False):
-        return remote_put(self.ip, src, dest, isDir, self.port, self.user)
+        return remote_put(
+            self.ip,
+            src,
+            dest,
+            isDir,
+            self.port,
+            self.user,
+            self.socksHost,
+            self.socksPort,
+        )
 
     def get_acme(hostName: str):
         return f"""
@@ -526,7 +580,13 @@ screen -S screenNameReplace -X eval "screen" "-X" "stuff '${script} \n'"
 
 class Setup(BaseSetup):
     def __init__(self, args: object | None = None) -> None:
-        super().__init__(args and args.ip, args and args.port, args and args.user)
+        super().__init__(
+            args and args.ip,
+            args and args.port,
+            args and args.user,
+            args and args.vpn_host,
+            args and args.vpn_port,
+        )
 
         self.dir = args and args.dir or "/opt/test"
         self.exe = args and args.exe or "exe"
@@ -694,6 +754,8 @@ def parse_to_setup():
     parser.add_argument("-envs", nargs="*", help="环境配置文件。例:本地文件名,服务器文件名,1目录/0文件")
     parser.add_argument("-crontab", default="", help="远程用户")
     parser.add_argument("-shell_start", default="", help="特殊的启动命令shell")
+    parser.add_argument("-vpn_host", default="localhost", help="代理地址")
+    parser.add_argument("-vpn_port", default=0, type=int, help="代理端口")
 
     args = parser.parse_args()
     my_print("parseArgs=", args)
