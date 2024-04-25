@@ -111,8 +111,9 @@ type ClientBase struct {
 	context *Context
 	Status  Status
 
-	chanSendDB  chan []byte
-	isConnected int32 //-1连接已关闭，0未连接，1已连接 大于1表示有发送数据占用着，暂时不能关闭
+	chanSendDB chan []byte
+	//连接计数 //-1连接已关闭，0未连接，1已连接 大于1表示有发送数据占用着，暂时不能关闭
+	ConnectedRef int32
 	//sendUse     sync.Map
 	SessionIdU uint64
 	UnionIdStr string
@@ -136,7 +137,7 @@ func (c *ClientBase) UnionId() string {
 
 func (c *ClientBase) Init(ddb DataDecodeBase, ttl, RTtl time.Duration, onSocket OnSocket, con Conn, socket iSocket) {
 	//如果自己本身是在运行的，那么先关闭一下自己。
-	if c.context != nil && c.context.Con != nil {
+	if c.context != nil && c.context.chanStop != nil {
 		c.context.Con.SafeClose(true)
 
 		//等待关闭结束
@@ -167,38 +168,55 @@ func (c *ClientBase) SafeClose(byLocalNotRemote bool) {
 	//c.mutexConnect.Lock() //=》死锁 由于折返锁的原因，这里被死锁了  0_0!!
 	//defer c.mutexConnect.Unlock()
 	//mybase.D("SafeClose")
-
+	//debug.PrintStack()
+	needClose := false
 	for {
-		swapped := atomic.CompareAndSwapInt32(&c.isConnected, 1, -1)
-		if swapped { //如果允许关闭
+		if atomic.LoadInt32(&c.ConnectedRef) == 0 {
+			//还没有连接过
+			//log.Printf("session=%s 0 not connected\n", c.UnionId())
+			break
+		}
+
+		swapped := atomic.CompareAndSwapInt32(&c.ConnectedRef, 1, -1)
+		if swapped { //允许关闭
+			needClose = true
 			break
 		} else {
-			if atomic.LoadInt32(&c.isConnected) == -1 {
-				return
+			switch atomic.LoadInt32(&c.ConnectedRef) {
+			case -1:
+				//已关闭
+				//log.Printf("session=%s -1 not connected\n", c.UnionId())
+			default:
+				//还有连接
+				//log.Printf("session=%s wait other to close\n", c.UnionId())
+				go func() { //防止外面死锁。。。
+					time.Sleep(time.Second) //等待1 ms
+					c.SafeClose(byLocalNotRemote)
+				}()
 			}
-
-			//fmt.Printf("session=%d SafeClose\n", c.SessionId())
-			go func() { //防止外面死锁。。。
-				time.Sleep(time.Second) //等待1 ms
-				c.SafeClose(byLocalNotRemote)
-			}()
 			return
 		}
 	}
 
-	c.Status.ChangeStatus(StatusShutdown, nil)
-	err := c.context.socket.Close()
-	if err != nil {
-		//mybase.E("Close error=%v", err.Error())
+	if needClose {
+		c.Status.ChangeStatus(StatusShutdown, nil)
+		err := c.context.socket.Close()
+		if err != nil {
+			//mybase.E("Close error=%v", err.Error())
+		}
+
+		close(c.context.chanStop)
+		c.context.chanStop = nil
+		close(c.chanSendDB)
+
+		//mybase.D("SafeClose closed %d", atomic.LoadInt32(&c.ConnectedRef))
+
+		//如果需要回调，我们就回调一下。 可能回调里面又有尝试connect
+		c.safeSendOnClose(byLocalNotRemote)
 	}
 
-	close(c.context.chanStop)
-	close(c.chanSendDB)
-
-	//mybase.D("SafeClose closed %d", atomic.LoadInt32(&c.isConnected))
-
-	c.safeSendOnClose(byLocalNotRemote) //如果需要回调，我们就回调一下。
-	c.context.readDB.Reset()            //清空已读的buffer
+	//log.Printf("close chan session=%s %v\n", c.UnionId(), c.context.chanStop)
+	c.context.readDB.Reset() //清空已读的buffer
 }
 
 func (c *ClientBase) Send(buf []byte) bool {
@@ -206,8 +224,8 @@ func (c *ClientBase) Send(buf []byte) bool {
 	//defer c.mutexConnect.Unlock()
 	//mybase.D("Send buf 1")
 
-	defer atomic.AddInt32(&c.isConnected, -1)    //安全的发送数据
-	if atomic.AddInt32(&c.isConnected, 1) <= 1 { //如果当前是连接状态，这个数一定是大于1的。
+	defer atomic.AddInt32(&c.ConnectedRef, -1)    //安全的发送数据
+	if atomic.AddInt32(&c.ConnectedRef, 1) <= 1 { //如果当前是连接状态，这个数一定是大于1的。
 		return false
 	}
 
@@ -222,11 +240,11 @@ func (c *ClientBase) Send(buf []byte) bool {
 
 //实验二： SafeClose实现
 //func (c *ClientBase) SafeClose(bySelf bool) {
-//	//mybase.LOG.Tracef("SafeClose 1 %d con=%d", c.SessionId(), c.isConnected)
-//	if c.isConnected == 0 {
+//	//mybase.LOG.Tracef("SafeClose 1 %d con=%d", c.SessionId(), c.ConnectedRef)
+//	if c.ConnectedRef == 0 {
 //		return
 //	}
-//	c.isConnected = 0
+//	c.ConnectedRef = 0
 //
 //	c.context.once.Do(func() { //这里会死锁。。 客户端断开->对等断开->再回到客户端断开,导致死锁
 //		//mybase.I("SafeClose 2 %d", c.SessionId())
@@ -338,7 +356,7 @@ func (c *ClientBase) safeSendOnClose(byLocalNotRemote bool) {
 }
 
 func (c *ClientBase) Reactor() {
-	c.isConnected = 1
+	atomic.StoreInt32(&c.ConnectedRef, 1)
 	c.Status.Reset() //先清空之前的状态信息
 	c.Status.ChangeStatus(StatusNormal, nil)
 

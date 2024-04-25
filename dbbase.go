@@ -556,7 +556,7 @@ func (d *DBMgrBase) RedisDel(key string) bool {
 
 /*
 *
-@expiration -1 永不失效
+@expiration 0 永久有效 ,-1也是永久有效 但是需要redis>6.0
 */
 func (d *DBMgrBase) RedisSetEx(key string, value interface{}, expiration time.Duration) (bool, error) {
 	ok, err := d.RedisInst.Set(d.RedisInst.Context(), key, value, expiration).Result()
@@ -564,7 +564,7 @@ func (d *DBMgrBase) RedisSetEx(key string, value interface{}, expiration time.Du
 }
 
 func (d *DBMgrBase) RedisSet(key string, value interface{}) (bool, error) {
-	return d.RedisSetEx(key, value, -1)
+	return d.RedisSetEx(key, value, 0)
 }
 
 func (d *DBMgrBase) RedisGet(key string) (string, error) {
