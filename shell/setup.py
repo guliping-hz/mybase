@@ -762,6 +762,32 @@ def parse_to_setup():
     setup = Setup(args)
     setup.start()
 
+def call_setup(kvargs: dict, envs: list, py: str = "setup.py"):
+    args = ["python", py]
+    for k, v in kvargs.items():
+        args.append(k)
+        if type(v) == list:
+            for i in range(len(v)):
+                args.append(str(v[i]))
+        elif v != "":
+            args.append(str(v))
+
+    if envs:
+        args.append("-envs")
+        for i in range(len(envs)):
+            args.append(envs[i]["from"])
+            args.append(envs[i]["to"])
+            if "dir" in envs[i] and envs[i]["dir"]:
+                args.append("1")
+            else:
+                args.append("0")
+
+    print("call_setup args=", args)
+
+    try:
+        subprocess.check_call(args)
+    except Exception as e:
+        print("call_setup e=", e)
 
 def test():
     # remote_exec("127.0.0.1", "ls -l")
