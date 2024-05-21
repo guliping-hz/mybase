@@ -1,6 +1,7 @@
 package mybase
 
 import (
+	"fmt"
 	"reflect"
 	"strconv"
 )
@@ -19,6 +20,50 @@ func (e H) GetH(key string) (H, bool) {
 	}
 	data, ok := dataI.(map[string]any)
 	return H(data), ok
+}
+
+func (e H) ForceInt64(key string) int64 {
+	dataI, ok := e.GetInterface(key)
+	if !ok {
+		return 0
+	}
+
+	rV := reflect.ValueOf(dataI)
+	rVKind := rV.Kind()
+	switch {
+	case rV.CanInt():
+		return rV.Int()
+	case rV.CanUint():
+		return int64(rV.Uint())
+	case rV.CanFloat():
+		return int64(rV.Float())
+	case rVKind == reflect.String:
+		vS, _ := e.GetString(key)
+		if ret, err := strconv.ParseInt(vS, 10, 64); err == nil {
+			return ret
+		}
+	}
+	panic(fmt.Sprintf("%s can't convert to int64 kind:%s", key, rVKind.String()))
+}
+
+func (e H) ForceString(key string) string {
+	dataI, ok := e.GetInterface(key)
+	if !ok {
+		return ""
+	}
+
+	v := e[key]
+	rV := reflect.ValueOf(dataI)
+	rVKind := rV.Kind()
+	switch {
+	case rV.CanInt(), rV.CanUint():
+		return fmt.Sprintf("%d", v)
+	case rV.CanFloat():
+		return fmt.Sprintf("%.0f", v)
+	case rVKind == reflect.String:
+		return rV.String()
+	}
+	panic(fmt.Sprintf("%s can't convert to string kind:%s", key, rVKind.String()))
 }
 
 func (e H) GetInt64(key string) (ret int64, ok bool) {
