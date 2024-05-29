@@ -219,6 +219,8 @@ def remote_put(
         # 自定义进度回调函数
         curFileName = None
 
+        my_print("\nscp put", src, "=>", dest)
+
         def progress(filename, size, sent):
             nonlocal curFileName
             percent = sent / size * 100
@@ -233,9 +235,9 @@ def remote_put(
         with SCPClient(ssh_client.get_transport(), progress=progress) as scp:
             scp.put(src, dest, recursive=isDir, preserve_times=True)  # 上传文件
 
-            # 或者从远程服务器下载文件到本地
-            # scp.get("remote_file.txt", "local_file.txt")  # 下载文件
-        my_print("\nscp put", src, "=>", dest)
+        # 或者从远程服务器下载文件到本地
+        # scp.get("remote_file.txt", "local_file.txt")  # 下载文件
+        print()
         ret = True
     except Exception as e:
         my_print("Error remote_scp", src, "=>", dest, ":", e)
@@ -614,7 +616,7 @@ class Setup(BaseSetup):
             return False
         return True
 
-    def start(self) -> bool:
+    def upload_pre(self) -> bool:
         # 编译代码
         if not build_go(self.buildDir, self.buildFile, self.outDir, self.exe):
             return False
@@ -626,6 +628,22 @@ class Setup(BaseSetup):
         if not self.grant_privilege(self.dir):
             return False
 
+        return True
+
+    def upload_after(self) -> bool:
+        # 最后上传EXE
+        my_print("上传EXE,觉得慢可以直接终止!")
+        exeFullPath = self.outDir + "/" + self.exe
+        if not self.remote_put(exeFullPath, self.dir):  # + "/" + self.exe
+            return False
+        return True
+
+    def upload(self) -> bool:
+        if not self.upload_pre():
+            return False
+        return self.upload_after()
+
+    def copy_pre(self) -> bool:
         for i in range(len(self.cacheDirNames)):
             subDir = self.dir + "/" + self.cacheDirNames[i]
             if not self.remote_exec(f"sudo mkdir -p {subDir}"):
@@ -687,13 +705,9 @@ class Setup(BaseSetup):
                 f'sudo sed -i "s#linuxDirReplace#{self.dir}#g" {self.dir}/screen.sh'
             ):
                 return False
+        return True
 
-        # 最后上传EXE
-        my_print("上传EXE,觉得慢可以直接终止!")
-        exeFullPath = self.outDir + "/" + self.exe
-        if not self.remote_put(exeFullPath, self.dir):  # + "/" + self.exe
-            return False
-
+    def copy_after(self) -> bool:
         if self.shellOn:
             # 关闭
             if not self.remote_exec(f"cd {self.dir} && sudo chmod +xxx ./restart.sh"):
@@ -724,6 +738,30 @@ class Setup(BaseSetup):
                 return False
 
         my_print(f"setup finished {self.ip}:{self.dir}/{self.exe}")
+        return True
+
+    def copy_start(self, srcBin: str) -> bool:
+        if not self.copy_pre():
+            return False
+
+        # copy
+        if not self.remote_exec(f"sudo cp {srcBin} {self.dir}"):
+            return False
+
+        return self.copy_after()
+
+    def start(self) -> bool:
+        if not self.upload_pre():
+            return False
+
+        if not self.copy_pre():
+            return False
+
+        # 最后上传EXE
+        if not self.upload_after():
+            return False
+
+        return self.copy_after()
 
 
 def parse_to_setup():
@@ -750,17 +788,35 @@ def parse_to_setup():
     parser.add_argument(
         "--sudo", action=argparse.BooleanOptionalAction, help="执行命令前sudo吗"
     )
-    parser.add_argument("-cache_dir_names", nargs="*", help="远程备用目录名,以dir指定的目录为当前前缀")
-    parser.add_argument("-envs", nargs="*", help="环境配置文件。例:本地文件名,服务器文件名,1目录/0文件")
+    parser.add_argument(
+        "-cache_dir_names", nargs="*", help="远程备用目录名,以dir指定的目录为当前前缀"
+    )
+    parser.add_argument(
+        "-envs", nargs="*", help="环境配置文件。例:本地文件名,服务器文件名,1目录/0文件"
+    )
     parser.add_argument("-crontab", default="", help="远程用户")
     parser.add_argument("-shell_start", default="", help="特殊的启动命令shell")
     parser.add_argument("-vpn_host", default="localhost", help="代理地址")
     parser.add_argument("-vpn_port", default=0, type=int, help="代理端口")
+    parser.add_argument("-action", default="start", help="执行行为")
+    parser.add_argument("-src", default="", help="拷贝执行的原二进制远程路径")
 
     args = parser.parse_args()
     my_print("parseArgs=", args)
     setup = Setup(args)
-    setup.start()
+
+    print("action=", args.action)
+    if args.action == "start":
+        setup.start()
+    elif args.action == "upload":
+        setup.upload()
+    elif args.action == "copy_start":
+        if args.src == "":
+            raise ValueError("copy src is empty")
+        setup.copy_start(args.src)
+    else:
+        raise ValueError("unknow action " + args.action)
+
 
 def call_setup(kvargs: dict, envs: list, py: str = "setup.py"):
     args = ["python", py]
@@ -788,6 +844,7 @@ def call_setup(kvargs: dict, envs: list, py: str = "setup.py"):
         subprocess.check_call(args)
     except Exception as e:
         print("call_setup e=", e)
+
 
 def test():
     # remote_exec("127.0.0.1", "ls -l")
