@@ -4,7 +4,6 @@ import (
 	"crypto/subtle"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
@@ -60,9 +59,16 @@ const (
 )
 
 var debugHttpReq = false
+var timeout time.Duration = time.Second * 10
 
+// 开启调试
 func OnDebugHttpReq() {
 	debugHttpReq = true
+}
+
+// 设置http请求超时时间，默认10s
+func SetDefaultHttpTimeout(t time.Duration) {
+	timeout = t
 }
 
 type HttpResult struct {
@@ -198,8 +204,10 @@ func HttpGetUrlValues(httpUrl string, query url.Values, customHead map[string]an
 		}
 	}
 
-	//处理返回结果
-	response, err := http.DefaultClient.Do(reqHttp)
+	//处理返回结果 10秒超时
+	cli := http.Client{Timeout: timeout}
+	response, err := cli.Do(reqHttp)
+	//response, err := http.DefaultClient.Do(reqHttp)
 	if err != nil {
 		W("HttpGetUrlValues do url=%s,err=%s", urlFull, err)
 		return "", err
@@ -288,13 +296,14 @@ func HttpPostWithQuery(strURL, body string, heads map[string]any, query url.Valu
 			req.Header.Add(k, fmt.Sprintf("%v", heads[k]))
 		}
 	}
-
-	resp, err := http.DefaultClient.Do(req)
+	//10s超时
+	cli := http.Client{Timeout: timeout}
+	resp, err := cli.Do(req)
 	if err != nil {
 		W("HttpPostWithQuery do url=%s,body=%s,heads=%+v,err=%v", strURL, body, heads, err)
 		return "", err
 	}
-	respBodyBytes, err := ioutil.ReadAll(resp.Body)
+	respBodyBytes, err := io.ReadAll(resp.Body)
 	_ = resp.Body.Close()
 	if err != nil {
 		W("HttpPostWithQuery read url=%s,body=%s,heads=%+v,err=%v", strURL, body, heads, err)
@@ -339,7 +348,7 @@ func CheckHttpHeader(w http.ResponseWriter, r *http.Request, isProduct bool, pre
 	var body, bodyMd5 string
 	//@注意，如果不在ParseForm 之前读取数据的话，后面想在读取就没有了，ParseForm方法会去读取body数据。所以我们这里先把他读取掉。
 	if r.Method == "POST" || r.Method == "PUT" || r.Method == "PATCH" { //如果是带有body的方法，我们先去读取一下body数据。
-		bits, _ := ioutil.ReadAll(r.Body)
+		bits, _ := io.ReadAll(r.Body)
 		defer r.Body.Close()
 		if len(bits) > 0 {
 			body = string(bits)
