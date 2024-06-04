@@ -49,8 +49,9 @@ var (
 	logSaveDay               = 365 * 24 * time.Hour //默认日志保存365天
 	isProduct                = true
 
-	chanLog chan *logLevelMsg
-	ctxLog  context.Context
+	chanLog   chan *logLevelMsg
+	ctxLog    context.Context
+	ctxCancel func()
 )
 
 func AddHook(hook logrus.Hook) {
@@ -137,7 +138,7 @@ func initLogFile() error {
 *
 @day 保留多少天的日志
 */
-func initLogDir(dir, fileName string, day int, ctx context.Context) error {
+func initLogDir(dir, fileName string, day int) error {
 	//var osname = string(runtime.GOOS)
 	//fmt.Println("os is", osname)
 	//dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
@@ -154,7 +155,7 @@ func initLogDir(dir, fileName string, day int, ctx context.Context) error {
 	if err := os.MkdirAll(logDir /*os.ModeDir*/, 0744); err != nil {
 		return err
 	}
-	ctxLog = ctx
+	ctxLog, ctxCancel = context.WithCancel(context.Background())
 	if chanLog == nil {
 		chanLog = make(chan *logLevelMsg, 10)
 		go func() {
@@ -193,7 +194,7 @@ func initLogDir(dir, fileName string, day int, ctx context.Context) error {
 					case ChangeFile:
 						_ = initLogFile()
 					}
-				case <-ctx.Done():
+				case <-ctxLog.Done():
 					return
 				}
 			}
@@ -202,7 +203,7 @@ func initLogDir(dir, fileName string, day int, ctx context.Context) error {
 	return initLogFile()
 }
 
-func InitLogModule(dir, fileName string, day int, isInProduct bool, debugLv logrus.Level, ctx context.Context) error {
+func InitLogModule(dir, fileName string, day int, isInProduct bool, debugLv logrus.Level) error {
 	// do something here to set environment depending on an environment variable
 	// or command-line flag
 	isProduct = isInProduct
@@ -223,7 +224,15 @@ func InitLogModule(dir, fileName string, day int, isInProduct bool, debugLv logr
 	}
 
 	InitNoFile()
-	return initLogDir(dir, fileName, day, ctx)
+	return initLogDir(dir, fileName, day)
+}
+
+// 关闭日志
+func CloseLogCtx() {
+	if ctxCancel != nil {
+		ctxCancel()
+		ctxCancel = nil
+	}
 }
 
 func InitNoFile() {
