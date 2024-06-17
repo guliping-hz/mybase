@@ -844,6 +844,8 @@ def call_setup(kvargs: dict, envs: list, py: str = "setup.py"):
         subprocess.check_call(args)
     except Exception as e:
         print("call_setup e=", e)
+        #终止，异常
+        os._exit(1)
 
 
 def test():
