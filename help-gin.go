@@ -70,6 +70,7 @@ func CrossMidW(ctx *gin.Context) {
 		w.Header().Add("Access-Control-Allow-Headers", "nonce")
 		w.Header().Add("Access-Control-Allow-Headers", "sign")
 		w.Header().Add("Access-Control-Allow-Headers", "token")
+		w.Header().Add("Access-Control-Allow-Headers", "uid")
 		w.Header().Add("Access-Control-Allow-Headers", "curtime")
 
 		// 允许浏览器（客户端）可以解析的头部 （重要）
