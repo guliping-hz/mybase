@@ -178,6 +178,10 @@ func (c *ClientBase) Shutdown() {
 }
 
 func (c *ClientBase) SafeClose(byLocalNotRemote bool) {
+	c.safeClose(byLocalNotRemote, false)
+}
+
+func (c *ClientBase) safeClose(byLocalNotRemote bool, waitOnlyMe bool) {
 	//c.mutexConnect.Lock() //=》死锁 由于折返锁的原因，这里被死锁了  0_0!!
 	//defer c.mutexConnect.Unlock()
 	//mybase.D("SafeClose")
@@ -188,8 +192,11 @@ func (c *ClientBase) SafeClose(byLocalNotRemote bool) {
 			break
 		} else {
 			//有人在等待关了吗？
-			if !atomic.CompareAndSwapInt32(&c.WaitClose, 0, 1) {
-				return
+			if !waitOnlyMe {
+				waitOnlyMe = atomic.CompareAndSwapInt32(&c.WaitClose, 0, 1)
+				if !waitOnlyMe {
+					return
+				}
 			}
 
 			//已经关了吗？
@@ -200,7 +207,7 @@ func (c *ClientBase) SafeClose(byLocalNotRemote bool) {
 			//fmt.Printf("session=%d SafeClose\n", c.SessionId())
 			go func() { //防止外面死锁。。。
 				time.Sleep(time.Second) //等待1 ms
-				c.SafeClose(byLocalNotRemote)
+				c.safeClose(byLocalNotRemote, true)
 			}()
 			return
 		}
