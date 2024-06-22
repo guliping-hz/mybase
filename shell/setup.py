@@ -108,7 +108,10 @@ def build_go(
         del os.environ["GOARCH"]
         del os.environ["GOOS"]
         del os.environ["GOTRACEBACK"]
-        return ret
+
+        if not ret:
+            os._exit(1)
+#         return ret
 
 
 def remote_exec(
