@@ -111,7 +111,7 @@ def build_go(
 
         if not ret:
             os._exit(1)
-#         return ret
+        return ret
 
 
 def remote_exec(
