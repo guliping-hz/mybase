@@ -39,6 +39,8 @@ func (s *Status) GetStatus() StatusNO {
 func (s *Status) ChangeStatusAll(status StatusNO, err error, stack []byte) bool {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+
+	//可能一次关闭会引发多个错误，
 	//只记录正常状态或者赋值为初始状态。
 	if s.status == StatusNormal || s.status == StatusUnknown || status == StatusUnknown {
 		s.status = status

@@ -34,6 +34,9 @@ type Conn interface {
 	//@param byLocalNotRemote 是否是本地主动本地断开；true:对服务器而言就是服务器把客户端断开，对客户端而言就是客户端主动断服务器
 	SafeClose(byLocalNotRemote bool)
 
+	//关闭，并等待关闭完成。
+	Shutdown()
+
 	// 封装发送buffer
 	Send(buf []byte) bool
 
@@ -114,6 +117,7 @@ type ClientBase struct {
 	chanSendDB chan []byte
 	//连接计数 //-1连接已关闭，0未连接，1已连接 大于1表示有发送数据占用着，暂时不能关闭
 	ConnectedRef int32
+	WaitClose    int32
 	//sendUse     sync.Map
 	SessionIdU uint64
 	UnionIdStr string
@@ -136,19 +140,10 @@ func (c *ClientBase) UnionId() string {
 }
 
 func (c *ClientBase) Init(ddb DataDecodeBase, ttl, RTtl time.Duration, onSocket OnSocket, con Conn, socket iSocket) {
-	//如果自己本身是在运行的，那么先关闭一下自己。
-	if c.context != nil && c.context.chanStop != nil {
-		c.context.Con.SafeClose(true)
+	//关闭可能已开启的。
+	c.Shutdown()
 
-		//等待关闭结束
-	waitFinish:
-		for {
-			select {
-			case <-c.context.Done():
-				break waitFinish
-			}
-		}
-	}
+	atomic.StoreInt32(&c.WaitClose, 0)
 
 	c.context = &Context{}
 	c.context.readDB = &bytes.Buffer{}
@@ -164,59 +159,69 @@ func (c *ClientBase) Init(ddb DataDecodeBase, ttl, RTtl time.Duration, onSocket 
 	c.context.OnSocket = onSocket
 }
 
+func (c *ClientBase) Shutdown() {
+	curConnect := atomic.LoadInt32(&c.ConnectedRef)
+	if curConnect == 0 || curConnect == -1 { //未连接或者已关闭
+		return
+	}
+
+	c.SafeClose(true)
+
+	//等待关闭完成。。
+	for {
+		waitClose := atomic.LoadInt32(&c.WaitClose)
+		if waitClose == 2 { //已关闭
+			break
+		}
+		time.Sleep(time.Millisecond)
+	}
+}
+
 func (c *ClientBase) SafeClose(byLocalNotRemote bool) {
 	//c.mutexConnect.Lock() //=》死锁 由于折返锁的原因，这里被死锁了  0_0!!
 	//defer c.mutexConnect.Unlock()
 	//mybase.D("SafeClose")
-	//debug.PrintStack()
-	needClose := false
-	for {
-		if atomic.LoadInt32(&c.ConnectedRef) == 0 {
-			//还没有连接过
-			//log.Printf("session=%s 0 not connected\n", c.UnionId())
-			break
-		}
 
+	for {
 		swapped := atomic.CompareAndSwapInt32(&c.ConnectedRef, 1, -1)
-		if swapped { //允许关闭
-			needClose = true
+		if swapped { //如果允许关闭
 			break
 		} else {
-			switch atomic.LoadInt32(&c.ConnectedRef) {
-			case -1:
-				//已关闭
-				//log.Printf("session=%s -1 not connected\n", c.UnionId())
-			default:
-				//还有连接
-				//log.Printf("session=%s wait other to close\n", c.UnionId())
-				go func() { //防止外面死锁。。。
-					time.Sleep(time.Second) //等待1 ms
-					c.SafeClose(byLocalNotRemote)
-				}()
+			//有人在等待关了吗？
+			if !atomic.CompareAndSwapInt32(&c.WaitClose, 0, 1) {
+				return
 			}
+
+			//已经关了吗？
+			if atomic.LoadInt32(&c.ConnectedRef) == -1 {
+				return
+			}
+
+			//fmt.Printf("session=%d SafeClose\n", c.SessionId())
+			go func() { //防止外面死锁。。。
+				time.Sleep(time.Second) //等待1 ms
+				c.SafeClose(byLocalNotRemote)
+			}()
 			return
 		}
 	}
 
-	if needClose {
-		c.Status.ChangeStatus(StatusShutdown, nil)
-		err := c.context.socket.Close()
-		if err != nil {
-			//mybase.E("Close error=%v", err.Error())
-		}
-
-		close(c.context.chanStop)
-		c.context.chanStop = nil
-		close(c.chanSendDB)
-
-		//mybase.D("SafeClose closed %d", atomic.LoadInt32(&c.ConnectedRef))
-
-		//如果需要回调，我们就回调一下。 可能回调里面又有尝试connect
-		c.safeSendOnClose(byLocalNotRemote)
+	c.Status.ChangeStatus(StatusShutdown, nil)
+	err := c.context.socket.Close()
+	if err != nil {
+		//mybase.E("Close error=%v", err.Error())
 	}
 
-	//log.Printf("close chan session=%s %v\n", c.UnionId(), c.context.chanStop)
-	c.context.readDB.Reset() //清空已读的buffer
+	close(c.context.chanStop)
+	close(c.chanSendDB)
+
+	//mybase.D("SafeClose closed %d", atomic.LoadInt32(&c.isConnected))
+
+	c.safeSendOnClose(byLocalNotRemote) //如果需要回调，我们就回调一下。
+	c.context.readDB.Reset()            //清空已读的buffer
+
+	//标记已经关闭完成
+	atomic.StoreInt32(&c.WaitClose, 2)
 }
 
 func (c *ClientBase) Send(buf []byte) bool {
@@ -286,7 +291,7 @@ func (c *ClientBase) Send(buf []byte) bool {
 //}
 
 func (c *ClientBase) IsClosedByPeer() bool {
-	return c.Status.err == ErrClose
+	return errors.Is(c.Status.err, ErrClose)
 }
 
 func (c *ClientBase) CloseWithErr(err error, stack []byte, check bool) {

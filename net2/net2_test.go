@@ -38,7 +38,7 @@ func (t *TestCli) OnRecvMsg(conn Conn, buf []byte) bool {
 
 func (t *TestCli) ConnectLobby() {
 	log.Printf("try connect\n")
-	if err := t.Connect("127.0.0.1:5102", time.Second*60, t, nil); err != nil {
+	if err := t.Connect("127.0.0.1:5302", time.Second*60, t, nil); err != nil {
 		go func() {
 			time.Sleep(time.Second * 3)
 			t.ConnectLobby()
@@ -51,5 +51,6 @@ func TestClientSocket_ReConnect(t *testing.T) {
 	wait.Add(1)
 	cli := new(TestCli)
 	cli.ConnectLobby()
+	//cli.ConnectLobby()
 	wait.Wait()
 }

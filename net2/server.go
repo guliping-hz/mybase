@@ -162,8 +162,10 @@ loop:
 		case <-s.chanStop:
 			//关闭已经连接的
 			s.fd2Client.Range(func(key, value any) bool {
-				agent := value.(*ClientSocket)
-				agent.SafeClose(false)
+				if agent, ok := value.(*ClientSocket); ok {
+					//agent.SafeClose(false)
+					go agent.Shutdown()
+				}
 				return true
 			})
 			//关闭监听的socket
