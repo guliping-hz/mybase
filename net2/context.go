@@ -18,7 +18,7 @@ type Context struct {
 
 	readDB *bytes.Buffer
 
-	once     sync.Once
+	//once     sync.Once
 	chanStop chan struct{}
 
 	dataDecoder DataDecodeBase

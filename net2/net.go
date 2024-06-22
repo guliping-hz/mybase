@@ -9,7 +9,6 @@ import (
 	"runtime"
 	"runtime/debug"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -317,47 +316,6 @@ func (c *ClientBase) CloseTimeout() {
 	c.context.Con.SafeClose(false)
 }
 
-func (c *ClientBase) process() error {
-	defer func() {
-		c.context.readDB = bytes.NewBuffer(c.context.readDB.Bytes()) //舍去已经读取的buffer，保留尚未读取的buffer
-	}()
-
-	lenHead := c.context.dataDecoder.GetPackageHeadLen()
-
-	for {
-		readLen := c.context.readDB.Len()
-		if readLen <= 0 || readLen < lenHead { //不足包长
-			return nil
-		}
-
-		//if os.Getenv("name") == "robot" {
-		//	//mybase.D("recv buf=%v", c.context.readDB.Bytes())
-		//}
-
-		lenPackage := c.context.dataDecoder.GetPackageLen(c.context.readDB.Bytes())
-		if lenPackage == 0 { //异常包
-			//mybase.W("lenPackage=0 readLen=%d,lenHead=%d", readLen, lenHead)
-			c.context.readDB.Reset()
-			return ErrBuffer
-		}
-
-		lenFull := lenHead + lenPackage
-		if lenFull > c.context.readDB.Len() { //不足一个包
-			//mybase.D("lenFull=%d,lenHead=%d need more %d", lenFull, lenHead, c.context.readDB.Len())
-			return nil
-		}
-
-		packageBuf := make([]byte, lenFull)
-		_, _ = c.context.readDB.Read(packageBuf)
-		//mybase.D("read copy buf len=%d", lenFull)
-		ok := c.context.OnSocket.OnRecvMsg(c.context.Con, packageBuf)
-		if !ok {
-			c.context.readDB.Reset()
-			return io.EOF
-		}
-	}
-}
-
 func (c *ClientBase) safeSendOnClose(byLocalNotRemote bool) {
 	defer func() {
 		recover()
@@ -374,23 +332,38 @@ func (c *ClientBase) Reactor() {
 
 	c.chanSendDB = make(chan []byte)
 	c.context.chanStop = make(chan struct{})
-	c.context.once = sync.Once{}
+	//c.context.once = sync.Once{}
 
-	go c.sendRoutine() //发送协程：按顺序统一发送buff
-	go c.recvRoutine() //接收协程:按顺序统一接收buff
+	//go c.sendRoutine() //发送协程：按顺序统一发送buff
+	//c.context这个成员变量赋新值的时候不会影响之前goroutine的环境
+	go sendRoutine(c.context, c.chanSendDB)
+
+	//TODO: 明天测试一下
+	go recvRoutine(c.context, c.CloseWithErr, c.CloseTimeout) //接收协程:按顺序统一接收buff
 }
 
-func (c *ClientBase) sendRoutine() {
+/**
+之前类似成员函数的写法会导致 再socket复用的时候会出现bug：
+在执行ctx.socket.sendEx(buf) 时，ctx.Done()已经可以return了，但是等到ctx.socket.sendEx(buf)执行完毕返回时，
+因为是复用，导致ctx.Done()赋值了一个新的上下文环境，这就导致goroutine无法正常退出，而且chanSendDB此时已关闭，
+这就会导致sendRoutine进入死循环：一直再send一个空的buf
+现在这样以函数参数的形式传入的时候，就算外面的上下文成员赋值了新值，也不会影响此goroutine之前运行的上下文环境。会正常的关闭。不会导致死循环。
+
+TODO: 注意：综上，在运行一个goroutine的时候并且这个对象如果是要可复用的，那么尽量把上下文环境以参数的形式传入，而不是直接访问成员变量的形式，因为这样会有意外的结果：
+明明之前的环境已经销毁，但是旧的goroutine还没来得及作出反馈，就被新的环境替代了，这时候又会运行新的goroutine，那么就会产生两个goroutine。导致goroutine泄露。
+*/
+// func (c *ClientBase)sendRoutine() {
+func sendRoutine(ctx *Context, chanSendDB <-chan []byte) {
 	for {
 		select {
-		case buf := <-c.chanSendDB:
+		case buf := <-chanSendDB:
 			//fmt.Printf("session=%d sendRoutine 1\n", c.SessionId())
 			//if c.context.socket != nil {
 			//如果client本身再运行中，这时候重新Init可能会导致socket为nil，所以在Init中加了判断，先正常关闭后再用。
-			c.context.socket.sendEx(buf)
+			ctx.socket.sendEx(buf)
 			//}
 			//fmt.Printf("session=%d sendRoutine 2\n", c.SessionId())
-		case <-c.context.Done():
+		case <-ctx.Done():
 			//close(c.chanSendDB) //这里是配合实验二
 			//fmt.Printf("session=%d sendRoutine end\n", c.SessionId())
 			return
@@ -398,19 +371,60 @@ func (c *ClientBase) sendRoutine() {
 	}
 }
 
-func (c *ClientBase) recvRoutine() {
+func process(ctx *Context) error {
+	defer func() {
+		ctx.readDB = bytes.NewBuffer(ctx.readDB.Bytes()) //舍去已经读取的buffer，保留尚未读取的buffer
+	}()
+
+	lenHead := ctx.dataDecoder.GetPackageHeadLen()
+
+	for {
+		readLen := ctx.readDB.Len()
+		if readLen <= 0 || readLen < lenHead { //不足包长
+			return nil
+		}
+
+		//if os.Getenv("name") == "robot" {
+		//	//mybase.D("recv buf=%v", ctx.readDB.Bytes())
+		//}
+
+		lenPackage := ctx.dataDecoder.GetPackageLen(ctx.readDB.Bytes())
+		if lenPackage == 0 { //异常包
+			//mybase.W("lenPackage=0 readLen=%d,lenHead=%d", readLen, lenHead)
+			ctx.readDB.Reset()
+			return ErrBuffer
+		}
+
+		lenFull := lenHead + lenPackage
+		if lenFull > ctx.readDB.Len() { //不足一个包
+			//mybase.D("lenFull=%d,lenHead=%d need more %d", lenFull, lenHead, ctx.readDB.Len())
+			return nil
+		}
+
+		packageBuf := make([]byte, lenFull)
+		_, _ = ctx.readDB.Read(packageBuf)
+		//mybase.D("read copy buf len=%d", lenFull)
+		ok := ctx.OnSocket.OnRecvMsg(ctx.Con, packageBuf)
+		if !ok {
+			ctx.readDB.Reset()
+			return io.EOF
+		}
+	}
+}
+
+func recvRoutine(ctx *Context, fErr func(error, []byte, bool), fTimeout func()) {
 	defer func() {
 		p := recover()
 		if err, ok := p.(error); ok {
 			log.Printf("CloseWithErr err=%s\n", err)
 			//异常报错导致的断开连接。。。
-			c.CloseWithErr(err, debug.Stack(), true)
+			fErr(err, debug.Stack(), true)
 		}
 	}()
 
-	c.context.OnSocket.OnConnect(c.context.Con)
+	ctx.OnSocket.OnConnect(ctx.Con)
 	for {
-		buffer, err := c.context.socket.recvEx()
+		buffer, err := ctx.socket.recvEx()
 		if err != nil {
 			err1, ok := err.(*net.OpError)
 			errStr := err.Error()
@@ -431,25 +445,25 @@ func (c *ClientBase) recvRoutine() {
 						表示服务器发送数据，客户端已经close,这个经过测试只有在windows上才会出现。linux试了很多遍都是返回io.EOF错误
 						解决办法就是客户端发送数据的时候需要wait一下，然后再close，这样close的结果就是2了
 				*/
-				c.CloseWithErr(ErrClose, nil, true)
+				fErr(ErrClose, nil, true)
 			} else if ok && err1 != nil && err1.Timeout() {
-				c.CloseTimeout()
+				fTimeout()
 			} else {
 				//检查是否已经更改了状态，如果已经更改表示是客户端主动close
-				c.CloseWithErr(err, nil, true)
+				fErr(err, nil, true)
 			}
 			return
 		}
 
-		_, err = c.context.readDB.Write(buffer)
+		_, err = ctx.readDB.Write(buffer)
 		if err != nil {
-			c.CloseWithErr(ErrOOM, nil, true) //无法把buffer全部塞进去，多半是没有内存了。
+			fErr(ErrOOM, nil, true) //无法把buffer全部塞进去，多半是没有内存了。
 			return
 		}
 
-		err = c.process()
+		err = process(ctx)
 		if err != nil {
-			c.CloseWithErr(err, nil, true)
+			fErr(err, nil, true)
 			return
 		}
 	}
