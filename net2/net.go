@@ -113,6 +113,7 @@ type ClientBase struct {
 	context *Context
 	Status  Status
 
+	chanStop   chan struct{}
 	chanSendDB chan []byte
 	//连接计数 //-1连接已关闭，0未连接，1已连接 大于1表示有发送数据占用着，暂时不能关闭
 	ConnectedRef int32
@@ -138,11 +139,9 @@ func (c *ClientBase) UnionId() string {
 	return c.UnionIdStr
 }
 
-func (c *ClientBase) Init(ddb DataDecodeBase, ttl, RTtl time.Duration, onSocket OnSocket, con Conn, socket iSocket) {
+func (c *ClientBase) Init(ddb DataDecodeBase, ttl, rTtl time.Duration, onSocket OnSocket, con Conn, socket iSocket) {
 	//关闭可能已开启的。
 	c.Shutdown()
-
-	atomic.StoreInt32(&c.WaitClose, 0)
 
 	c.context = &Context{}
 	c.context.readDB = &bytes.Buffer{}
@@ -151,11 +150,10 @@ func (c *ClientBase) Init(ddb DataDecodeBase, ttl, RTtl time.Duration, onSocket 
 		c.context.dataDecoder = new(DataDecodeBinaryBigEnd)
 	}
 	c.context.ttl = ttl
-	c.context.rTtl = RTtl
-
+	c.context.rTtl = rTtl
+	c.context.OnSocket = onSocket
 	c.context.Con = con
 	c.context.socket = socket
-	c.context.OnSocket = onSocket
 }
 
 func (c *ClientBase) Shutdown() {
@@ -218,7 +216,8 @@ func (c *ClientBase) safeClose(byLocalNotRemote bool, waitOnlyMe bool) {
 		//mybase.E("Close error=%v", err.Error())
 	}
 
-	close(c.context.chanStop)
+	close(c.chanStop)
+	c.chanStop = nil
 	close(c.chanSendDB)
 
 	//mybase.D("SafeClose closed %d", atomic.LoadInt32(&c.isConnected))
@@ -326,20 +325,24 @@ func (c *ClientBase) safeSendOnClose(byLocalNotRemote bool) {
 }
 
 func (c *ClientBase) Reactor() {
+	if c.chanStop != nil {
+		panic("c.chanStop is still open,should call shutdown")
+	}
+
+	atomic.StoreInt32(&c.WaitClose, 0)
 	atomic.StoreInt32(&c.ConnectedRef, 1)
 	c.Status.Reset() //先清空之前的状态信息
 	c.Status.ChangeStatus(StatusNormal, nil)
 
+	//每次启动使用新的chan
+	c.chanStop = make(chan struct{})
 	c.chanSendDB = make(chan []byte)
-	c.context.chanStop = make(chan struct{})
-	//c.context.once = sync.Once{}
 
 	//go c.sendRoutine() //发送协程：按顺序统一发送buff
 	//c.context这个成员变量赋新值的时候不会影响之前goroutine的环境
-	go sendRoutine(c.context, c.chanSendDB)
-
-	//TODO: 明天测试一下
-	go recvRoutine(c.context, c.CloseWithErr, c.CloseTimeout) //接收协程:按顺序统一接收buff
+	go sendRoutine(c.context, c.chanStop, c.chanSendDB)
+	//接收协程:按顺序统一接收buff
+	go recvRoutine(c.context, c.CloseWithErr, c.CloseTimeout)
 }
 
 /**
@@ -353,7 +356,7 @@ TODO: 注意：综上，在运行一个goroutine的时候并且这个对象如�
 明明之前的环境已经销毁，但是旧的goroutine还没来得及作出反馈，就被新的环境替代了，这时候又会运行新的goroutine，那么就会产生两个goroutine。导致goroutine泄露。
 */
 // func (c *ClientBase)sendRoutine() {
-func sendRoutine(ctx *Context, chanSendDB <-chan []byte) {
+func sendRoutine(ctx *Context, chanStop <-chan struct{}, chanSendDB <-chan []byte) {
 	for {
 		select {
 		case buf := <-chanSendDB:
@@ -363,7 +366,7 @@ func sendRoutine(ctx *Context, chanSendDB <-chan []byte) {
 			ctx.socket.sendEx(buf)
 			//}
 			//fmt.Printf("session=%d sendRoutine 2\n", c.SessionId())
-		case <-ctx.Done():
+		case <-chanStop:
 			//close(c.chanSendDB) //这里是配合实验二
 			//fmt.Printf("session=%d sendRoutine end\n", c.SessionId())
 			return

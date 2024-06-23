@@ -18,9 +18,6 @@ type Context struct {
 
 	readDB *bytes.Buffer
 
-	//once     sync.Once
-	chanStop chan struct{}
-
 	dataDecoder DataDecodeBase
 
 	ttl       time.Duration //写超时
@@ -32,13 +29,13 @@ func (c *Context) String() string {
 	return fmt.Sprintf("net2.Context sessionId=%d", c.SessionId())
 }
 
-func (c *Context) Deadline() (deadline time.Time, ok bool) {
-	return
-}
-
-func (c *Context) Done() <-chan struct{} {
-	return c.chanStop
-}
+//func (c *Context) Deadline() (deadline time.Time, ok bool) {
+//	return
+//}
+//
+//func (c *Context) Done() <-chan struct{} {
+//	return c.chanStop
+//}
 
 func (c *Context) Err() error {
 	return nil
