@@ -176,11 +176,12 @@ map[string]any ->数据结构
 
 @param input []map[string]any 或者 map[string]any 或者 结构
 @param output 结构指针 或者 map指针
+@param weakly 是否支持弱转换  比如 string=>int int=>string
 
 @return nil无错误
 */
-func Decode(input, outputPtr any) error {
-	return DecodeEx(input, outputPtr, false)
+func Decode(input, outputPtr any, weakly bool) error {
+	return DecodeEx(input, outputPtr, weakly)
 }
 
 /*

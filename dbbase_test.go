@@ -21,14 +21,14 @@ type UsrBill struct {
 	Uid       int64      `json:"uid"`
 	Avatar    string     `json:"avatar"`
 	Nickname  string     `json:"nickname"`
-	Bill      int64      `json:"bill"`
+	Cost      int64      `json:"cost"`
 	CreatedAt *time.Time `json:"created_at"`
 }
 
 func TestParseDbTime(t *testing.T) {
 	var err error
 	imp := new(DBMgrBase)
-	if imp.DbInst, err = sql.Open("mysql", "test:111111@tcp(127.0.0.1:3306)/test?charset=utf8mb4&loc=Local&parseTime=True"); err != nil {
+	if imp.DbInst, err = sql.Open("mysql", "test:111111@tcp(127.0.0.1:3306)/fish_game?charset=utf8mb4&loc=Local&parseTime=True"); err != nil {
 		t.Error(err)
 		return
 	}
