@@ -7,6 +7,7 @@ import (
 	"github.com/mohae/deepcopy"
 	"reflect"
 	"regexp"
+	"strings"
 	"sync"
 	"time"
 )
@@ -21,6 +22,7 @@ const (
 
 var SqlRegExp *regexp.Regexp
 
+// 此函数仅限服务器内部的高频率输入数据使用
 func WrapSql(query string, args ...any) string {
 	i := 0
 	return SqlRegExp.ReplaceAllStringFunc(query, func(s string) (arg string) {
@@ -30,7 +32,8 @@ func WrapSql(query string, args ...any) string {
 		argvValue := reflect.ValueOf(argV)
 		switch {
 		case argvType.Kind() == reflect.String:
-			arg = fmt.Sprintf(`'%s'`, argV)
+			//防止 argvValue 字符串中有单引号
+			arg = fmt.Sprintf(`'%s'`, strings.Replace(argvValue.String(), `'`, `\'`, -1))
 		case argvValue.CanInt():
 			arg = fmt.Sprintf(`%v`, argvValue.Int())
 		case argvValue.CanUint():
@@ -107,12 +110,12 @@ func (d *DBMgrBase) LoadTableEx(query string, args ...any) ([][]map[string]any, 
 		colCnt := len(cols)
 		tableData := make([]map[string]any, 0)
 		values := make([]any, colCnt)
-		valuePtrs := make([]any, colCnt)
+		valuesAddr := make([]any, colCnt)
+		for i := range values {
+			valuesAddr[i] = &values[i]
+		}
 		for rows.Next() {
-			for i := 0; i < colCnt; i++ {
-				valuePtrs[i] = &values[i]
-			}
-			err = rows.Scan(valuePtrs...)
+			err = rows.Scan(valuesAddr...)
 			if err != nil {
 				E("query=%s, Scan error=%s", rawSql, err.Error())
 				break

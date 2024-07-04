@@ -2,13 +2,12 @@ package mybase
 
 import (
 	"github.com/sirupsen/logrus"
-	"golang.org/x/net/context"
 	"testing"
 	"time"
 )
 
 func TestLog(t *testing.T) {
-	if err := InitLogModule("./bin", "test", 3, false, logrus.TraceLevel, context.Background()); err != nil {
+	if err := InitLogModule("./bin", "test", 3, false, logrus.TraceLevel); err != nil {
 		t.Error(err)
 		return
 	}
