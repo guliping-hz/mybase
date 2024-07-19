@@ -659,7 +659,7 @@ class Setup(BaseSetup):
         self.remote_exec(f"sudo mkdir -p {self.dir}/back")
         # self.remote_exec(f'sudo find {self.dir}/back -mtime +30 -type f -name "*.bak" -delete')
         self.remote_exec(
-            f"sudo mv {self.dir}/{self.exe} {self.dir}/back/{self.exe}.{int(time.time()).bak}"
+            f"sudo mv {self.dir}/{self.exe} {self.dir}/back/{self.exe}.{int(time.time())}.bak"
         )
 
         # 上传文件
