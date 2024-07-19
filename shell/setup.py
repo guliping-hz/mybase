@@ -656,8 +656,10 @@ class Setup(BaseSetup):
 
         # # 重命名
         # self.remote_exec(f"sudo cd {self.dir} && rm {self.exe}.bak")
+        self.remote_exec(f"sudo mkdir -p {self.dir}/back")
+        # self.remote_exec(f'sudo find {self.dir}/back -mtime +30 -type f -name "*.bak" -delete')
         self.remote_exec(
-            f"cd {self.dir} && sudo mv {self.exe} {self.exe}.{int(time.time())}"
+            f"sudo mv {self.dir}/{self.exe} {self.dir}/back/{self.exe}.{int(time.time()).bak}"
         )
 
         # 上传文件
@@ -847,7 +849,7 @@ def call_setup(kvargs: dict, envs: list, py: str = "setup.py"):
         subprocess.check_call(args)
     except Exception as e:
         print("call_setup e=", e)
-        #终止，异常
+        # 终止，异常
         os._exit(1)
 
 
