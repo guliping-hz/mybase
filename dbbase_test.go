@@ -51,3 +51,28 @@ func TestParseDbTime(t *testing.T) {
 	s, _ = sonic.MarshalString(my)
 	t.Log(s)
 }
+
+func TestTimeToString(t *testing.T) {
+	now := time.Now()
+	input := H{
+		"created_at": now,
+	}
+	output := struct {
+		CreatedAt string `json:"created_at"`
+	}{}
+
+	if err := DecodeEx(input, &output, true, func(src reflect.Type, dest reflect.Type, in interface{}) (interface{}, error) {
+		t.Logf("%v:%s %v:%s\n", src.Kind(), src.String(), dest.Kind(), dest.String())
+		if src.Kind() == reflect.Struct && src.String() == "time.Time" && dest.Kind() == reflect.String {
+			newIn := in.(time.Time)
+			return newIn.Format(TimeFmtDB), nil
+		} else if src.Kind() == reflect.Ptr && src.String() == "*time.Time" && dest.Kind() == reflect.String {
+			newIn := in.(*time.Time)
+			return newIn.Format(TimeFmtDB), nil
+		}
+		return in, nil
+	}); err != nil {
+		t.Error(err)
+	}
+	t.Logf("%+v\n", output)
+}

@@ -280,7 +280,7 @@ func (d *DBMgrBase) selectObject(logWarn bool, v any, query string, args ...any)
 
 	if len(tableData) > 0 {
 		row := tableData[0]
-		if err = Decode(row, v, true); err != nil {
+		if err = DecodeDb(row, v); err != nil {
 			E("query=%s, DecodePath error=%s", WrapSql(query, args...), err.Error())
 			return err
 		} else {
@@ -313,7 +313,7 @@ func (d *DBMgrBase) SelectObjectsEx2(logWarn bool, v any, query string, args ...
 	}
 
 	if len(tableData) > 0 {
-		if err = Decode(tableData, v, true); err != nil {
+		if err = DecodeDb(tableData, v); err != nil {
 			E("query=%s, DecodePath error=%s", WrapSql(query, args...), err.Error())
 			return err
 		} else {
@@ -502,8 +502,8 @@ func (d *DBMgrBase) CallQueryResultSets(v []interface{}, query string, args ...i
 
 	for i := range v {
 		if i < len(resultSets) {
-			if err = Decode(resultSets[i], v[i], true); err != nil {
-				E("query=%s, Decode error=%s", WrapSql(query, args...), err.Error())
+			if err = DecodeDb(resultSets[i], v[i]); err != nil {
+				E("query=%s, DecodeDb error=%s", WrapSql(query, args...), err.Error())
 				return err
 			}
 		}
@@ -524,8 +524,8 @@ func (d *DBMgrBase) CallQueryResultSetsOnlyFirst(v []interface{}, query string, 
 			if len(resultSets[i]) == 0 {
 				return ErrNoData
 			}
-			if err = Decode(resultSets[i][0], v[i], true); err != nil {
-				E("query=%s, Decode error=%s", WrapSql(query, args...), err.Error())
+			if err = DecodeDb(resultSets[i][0], v[i]); err != nil {
+				E("query=%s, DecodeDb error=%s", WrapSql(query, args...), err.Error())
 				return err
 			}
 		}

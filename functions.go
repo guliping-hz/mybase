@@ -181,7 +181,7 @@ map[string]any ->数据结构
 @return nil无错误
 */
 func Decode(input, outputPtr any, weakly bool) error {
-	return DecodeEx(input, outputPtr, weakly)
+	return DecodeEx(input, outputPtr, weakly, nil)
 }
 
 /*
@@ -192,19 +192,34 @@ map[string]any ->结构指针
 	比如string转换成int。当然前提是该数据类型支持转换
 */
 func DecodeRedis(input, outputPtr any) error {
-	return DecodeEx(input, outputPtr, true)
+	return DecodeEx(input, outputPtr, true, nil)
+}
+
+func DecodeDb(input, output any) error {
+	return DecodeEx(input, output, true, func(src reflect.Type, dest reflect.Type, in interface{}) (interface{}, error) {
+		//支持解析time.Time 转字符串
+		if src.Kind() == reflect.Struct && src.String() == "time.Time" && dest.Kind() == reflect.String {
+			newIn := in.(time.Time)
+			return newIn.Format(TimeFmtDB), nil
+		} else if src.Kind() == reflect.Ptr && src.String() == "*time.Time" && dest.Kind() == reflect.String {
+			newIn := in.(*time.Time)
+			return newIn.Format(TimeFmtDB), nil
+		}
+		return in, nil
+	})
 }
 
 /*
 *
 @outputPtr 需要指针类型
 */
-func DecodeEx(input, outputPtr any, weakly bool) error {
+func DecodeEx(input, outputPtr any, weakly bool, hook mapstructure.DecodeHookFuncType) error {
 	//dataType := reflect.TypeOf(outputPtr) //获取数据类型
 	//if dataType.Kind() != reflect.Ptr {
 	//	return fmt.Errorf("need Ptr")
 	//}
 	config := &mapstructure.DecoderConfig{
+		DecodeHook:       hook,
 		Metadata:         nil,
 		Result:           outputPtr,
 		TagName:          "json",
