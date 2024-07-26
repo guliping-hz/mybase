@@ -224,12 +224,14 @@ func DecodeEx(input, outputPtr any, weakly bool, hook mapstructure.DecodeHookFun
 	//	return fmt.Errorf("need Ptr")
 	//}
 	config := &mapstructure.DecoderConfig{
-		DecodeHook:       hook,
 		Metadata:         nil,
 		Result:           outputPtr,
 		TagName:          "json",
 		WeaklyTypedInput: weakly,
 		Squash:           true,
+	}
+	if hook != nil {
+		config.DecodeHook = hook
 	}
 	decoder, err := mapstructure.NewDecoder(config)
 	if err != nil {
