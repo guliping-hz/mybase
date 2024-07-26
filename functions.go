@@ -199,11 +199,16 @@ func DecodeDb(input, output any) error {
 	return DecodeEx(input, output, true, func(src reflect.Type, dest reflect.Type, in interface{}) (interface{}, error) {
 		//支持解析time.Time 转字符串
 		if src.Kind() == reflect.Struct && src.String() == "time.Time" && dest.Kind() == reflect.String {
-			newIn := in.(time.Time)
-			return newIn.Format(TimeFmtDB), nil
+			if newIn, ok := in.(time.Time); ok {
+				return newIn.Format(TimeFmtDB), nil
+			}
 		} else if src.Kind() == reflect.Ptr && src.String() == "*time.Time" && dest.Kind() == reflect.String {
-			newIn := in.(*time.Time)
-			return newIn.Format(TimeFmtDB), nil
+			if newIn, ok := in.(*time.Time); ok {
+				if newIn == nil {
+					return "1970-07-01 00:00:00", nil
+				}
+				return newIn.Format(TimeFmtDB), nil
+			}
 		}
 		return in, nil
 	})
