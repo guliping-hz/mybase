@@ -24,6 +24,10 @@ var SqlRegExp *regexp.Regexp
 
 // 此函数仅限服务器内部的高频率输入数据使用
 func WrapSql(query string, args ...any) string {
+	if len(args) == 0 {
+		return query
+	}
+
 	i := 0
 	return SqlRegExp.ReplaceAllStringFunc(query, func(s string) (arg string) {
 		argV := args[i]
