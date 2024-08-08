@@ -329,8 +329,6 @@ func (c *ClientBase) Reactor() {
 		panic("c.chanStop is still open,should call shutdown")
 	}
 
-	atomic.StoreInt32(&c.WaitClose, 0)
-	atomic.StoreInt32(&c.ConnectedRef, 1)
 	c.Status.Reset() //先清空之前的状态信息
 	c.Status.ChangeStatus(StatusNormal, nil)
 
@@ -343,6 +341,10 @@ func (c *ClientBase) Reactor() {
 	go sendRoutine(c.context, c.chanStop, c.chanSendDB)
 	//接收协程:按顺序统一接收buff
 	go recvRoutine(c.context, c.CloseWithErr, c.CloseTimeout)
+
+	//最后标记状态。
+	atomic.StoreInt32(&c.WaitClose, 0)
+	atomic.StoreInt32(&c.ConnectedRef, 1)
 }
 
 /**
