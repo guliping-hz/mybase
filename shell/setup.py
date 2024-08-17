@@ -27,6 +27,42 @@ def change_line_end_from_win_to_linux(file: str):
             f2.write(contentNew.encode("utf8"))
             f2.flush()
 
+def get_dir_files(dir: str, ignores: dict[str, bool] | None = None):
+    files = []
+    allChileFiles = []
+    for dirpath, dirnames, filenames in os.walk(dir):
+        print("dirpath=", dirpath)
+        dirpath = dirpath.replace("\\", "/")
+        # print("dirnames=", dirnames)
+        # print("filenames=", filenames)
+
+        nowDir = os.path.basename(dirpath)
+        if ignores:
+            if nowDir in ignores:
+                print("skip")
+                continue
+            find = False
+            for k in ignores.keys():
+                if dirpath.find("/" + k + "/") != -1:
+                    find = True
+                    break
+            if find:
+                print("skip")
+                continue
+
+        for file in filenames:
+            files.append(file)
+            fullpath = dirpath + "/" + file  # os.path.join(dirpath, file)
+
+            # 更新行尾结束符
+            if fullpath.endswith(".sh"):
+                change_line_end_from_win_to_linux(fullpath)
+
+            # print("fullpath=", fullpath)
+            allChileFiles.append(fullpath)
+    # return files
+    return allChileFiles
+
 
 def my_print(*args, end: str | None = None, nofile: bool = False):
     # 获取上一行调用的位置信息
