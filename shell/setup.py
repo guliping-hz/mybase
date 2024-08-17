@@ -29,7 +29,7 @@ def change_line_end_from_win_to_linux(file: str):
 
 def get_dir_files(dir: str, ignores: dict[str, bool] | None = None):
     files = []
-    allChileFiles = []
+    allChildrenFiles = []
     for dirpath, dirnames, filenames in os.walk(dir):
         print("dirpath=", dirpath)
         dirpath = dirpath.replace("\\", "/")
@@ -59,9 +59,9 @@ def get_dir_files(dir: str, ignores: dict[str, bool] | None = None):
                 change_line_end_from_win_to_linux(fullpath)
 
             # print("fullpath=", fullpath)
-            allChileFiles.append(fullpath)
+            allChildrenFiles.append(fullpath)
     # return files
-    return allChileFiles
+    return allChildrenFiles
 
 
 def my_print(*args, end: str | None = None, nofile: bool = False):
