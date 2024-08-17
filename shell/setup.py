@@ -16,6 +16,18 @@ import select
 import socket
 
 
+def change_line_end_from_win_to_linux(file: str):
+    with open(file, "rb") as f:
+        content = f.read()
+        # print(content)
+        contentNew = content.decode("utf8").replace("\r\n", "\n")
+        # print(contentNew.encode("utf8"))
+
+        with open(file, "wb") as f2:
+            f2.write(contentNew.encode("utf8"))
+            f2.flush()
+
+
 def my_print(*args, end: str | None = None, nofile: bool = False):
     # 获取上一行调用的位置信息
     caller_frame = inspect.currentframe().f_back
@@ -192,6 +204,11 @@ def remote_put(
     :param socksHost 代理host
     :param socksPort 代理端口
     """
+
+    # 优先把脚本换成linux行尾符号
+    if not isDir and src.endswith(".sh"):
+        change_line_end_from_win_to_linux(src)
+
     sock = None
     if socksPort:  # 过滤 None 和 0
         print(f"use socks {socksHost}:{socksPort}")
