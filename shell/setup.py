@@ -27,7 +27,8 @@ def change_line_end_from_win_to_linux(file: str):
             f2.write(contentNew.encode("utf8"))
             f2.flush()
 
-def get_dir_files(dir: str, ignores: dict[str, bool] | None = None):
+
+def get_dir_files(dir: str, ignores: dict[str, bool] | None = None) -> list[str]:
     files = []
     allChildrenFiles = []
     for dirpath, dirnames, filenames in os.walk(dir):
@@ -303,7 +304,7 @@ def remote_put(
         return ret
 
 
-def md5_str(str):
+def md5_str(str) -> str:
     return hashlib.md5(bytes(str, "utf_8")).hexdigest()
 
 
@@ -539,10 +540,10 @@ class BaseSetup:
         if self.socksPort:
             print(f"use socks {self.socksHost}:{self.socksPort}")
 
-    def remote_exec(self, commond: str):
+    def remote_exec(self, commond: str) -> bool:
         return remote_exec(self.ip, commond, self.port, self.user)
 
-    def remote_put(self, src: str, dest: str, isDir: bool = False):
+    def remote_put(self, src: str, dest: str, isDir: bool = False) -> bool:
         return remote_put(
             self.ip,
             src,
@@ -554,7 +555,7 @@ class BaseSetup:
             self.socksPort,
         )
 
-    def get_acme(hostName: str):
+    def get_acme(hostName: str) -> str:
         return f"""
 /root/.acme.sh/acme.sh --install-cert -d {hostName} \
 --key-file /root/cert/{hostName}/key.pem  \
@@ -562,7 +563,7 @@ class BaseSetup:
 --reloadcmd "nginx -s reload"
 """
 
-    def get_start():
+    def get_start() -> str:
         return """#!/bin/bash
 
 echo "use exeNameReplace"
@@ -582,7 +583,7 @@ $(pwd)/exeNameReplace &
 #$(pwd)/exeNameReplace > /dev/null &
 """
 
-    def get_end():
+    def get_end() -> str:
         return """#!/bin/bash
 
 #通用停止当前目录启动的进程
@@ -608,7 +609,7 @@ function stop15(){
 stop15 exeNameReplace
 """
 
-    def get_restart():
+    def get_restart() -> str:
         return """#!/bin/bash
 
 #上传后，如果运行报错。更改回车符：goland->File->File Properties->Line Separators->LF-Unix & macOs
@@ -623,7 +624,7 @@ sleep 2s
 sudo $(pwd)/start.sh
 """
 
-    def get_screen():
+    def get_screen() -> str:
         return """#退出对应的screen  ||true 忽略执行错误
 screen -S screenNameReplace -X quit || true
 #重新创建一个新的screen
