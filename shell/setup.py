@@ -80,14 +80,18 @@ def check_and_install_dependency(p_import: str, package: str | None = None):
         if not package:
             package = p_import
         importlib.import_module(p_import)
-    except Exception as e:
-        print("check_and_install_dependency e=", e)
+        print(f"{package} is already installed.")
+    except ImportError:
         print(f"{package} is not installed. Installing...")
         try:
-            subprocess.check_call(["pip", "install", package])
+            # 升级pip
+            subprocess.check_call(
+                ["python3", "-m", "pip", "install", "--upgrade", "pip"]
+            )
+            subprocess.check_call(["pip3", "install", package])
             print(f"{package} has been installed.")
-        except Exception as e:
-            print(f"install {package} fail,e=", e)
+        except subprocess.CalledProcessError:
+            print(f"install {package} fail,exit...")
             sys.exit(1)
 
 
