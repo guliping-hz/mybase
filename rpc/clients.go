@@ -91,7 +91,7 @@ func (c *Clients) getCli(target string) *ClientTarget {
 }
 
 // 连接池功能去掉了。。把游戏卡住了。
-func (c *Clients) GetCli(target string) (any, *grpc.ClientConn) {
+func (c *Clients) GetClient(target string) (any, *grpc.ClientConn) {
 	cli := c.getCli(target)
 	if cli == nil {
 		return nil, nil
