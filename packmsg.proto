@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+//protoc --go_out=. packmsg.proto
+//Imports
+//protoc --js_out=library=myproto_libs,binary:./js-survive packmsg.proto
+//CommonJS
+//protoc --js_out=import_style=commonjs,binary:./js-survive packmsg.proto
+
+package cmd;
+option go_package = "./cmd";
+
+message PackMsg {
+  int32 cmd = 1;//Cmd
+  int32 seq = 2;//序列号
+  int32 ret = 3;//返回值
+  bytes binary = 4; //包内容
+  string tip = 5;//服务器传来的提示消息内容
+}
+
+//网关数据
+enum Status{
+  Init = 0;
+  //  Connect = 1; 不再需要单独的Connect;在Live中自动判断
+  Close = 2;
+  Live = 3;
+}
+
+message AgentData {
+  uint32 id = 1;//服务ID
+  //  uint32 sid = 2;//连接的索引
+  uint64 cliId = 3;//客户端ID
+  Status status = 4;
+  //  string ip = 5;//仅连接的时候传值
+  bytes data = 6;
+  bool close = 7;//是否关闭连接=>来自服务器
+  string ws = 8; //接入地址
+  int32 weight = 9;//权重
+}

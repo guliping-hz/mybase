@@ -1,32 +1,34 @@
 package mybase
 
 import (
-	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"github.com/mitchellh/mapstructure"
-	"io/ioutil"
 	"math"
-	"math/big"
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 )
 
-// maxValue > 0
-func GetRandom(maxValue int) int {
-	if maxValue <= 0 {
-		return 0
-	}
-	return RandInt(0, maxValue)
-}
+func CreateRecoveryFunc(key string, errOccur func()) func() {
+	return func() {
+		if err := recover(); err != nil {
+			builder := &strings.Builder{}
+			builder.Write(debug.Stack())
+			E("panic %s dump err=%s\nstack=\n%s", key, err, builder.String())
+			//fmt.Printf("panic %s dump err=%s\nstack=\n%s", key, err, builder.String())
 
-func GetRandomI32(maxValue int) int32 {
-	return int32(GetRandom(maxValue))
+			if errOccur != nil {
+				errOccur()
+			}
+		}
+	}
 }
 
 func GetFullPath(filename string) (string, error) {
@@ -37,16 +39,6 @@ func GetFullPath(filename string) (string, error) {
 	strings.Replace(filename, "\\", "/", -1)
 	fullPath := filePath + "/" + filename
 	return fullPath, nil
-}
-
-// 区间：[minValue,maxValue)
-func RandInt(minValue, maxValue int) int {
-	diff := maxValue - minValue
-	ret, err := rand.Int(rand.Reader, big.NewInt(int64(diff)))
-	if err != nil {
-		return 0
-	}
-	return int(ret.Int64()) + minValue
 }
 
 func ConvertVersion(version string) int64 {
@@ -129,7 +121,7 @@ func LoadCfg(filename string, cfg any) error {
 		return err
 	}
 	fullPathFile := filePath + "/" + filename
-	buf, err := ioutil.ReadFile(fullPathFile)
+	buf, err := os.ReadFile(fullPathFile)
 	if err != nil {
 		E("LoadCfg ReadFile[%s]: %s", fullPathFile, err.Error())
 		return err
@@ -343,11 +335,37 @@ func GetSafeUserInput(input string) string {
 	return output
 }
 
-func GetRandSeed() int64 {
-	var a = 0 //变量地址当做随机数
-	var b = 0 //变量地址当做随机数
-	aPtr, _ := strconv.ParseInt(fmt.Sprintf("%p", &a), 0, 64)
-	bPtr, _ := strconv.ParseInt(fmt.Sprintf("%p", &b), 0, 64)
+func SliceOver65535(totalLen, sliceLen int, f func(i, j int)) {
+	if totalLen <= 0 {
+		return
+	}
 
-	return time.Now().Unix() * aPtr * bPtr
+	if sliceLen <= 0 {
+		panic("sliceLen can't <= 0")
+	}
+
+	begin := 0
+	end := sliceLen
+	if end > totalLen {
+		end = totalLen
+	}
+
+	for begin < end {
+		f(begin, end)
+
+		begin = end
+		end += sliceLen
+		if end > totalLen {
+			end = totalLen
+		}
+	}
+}
+
+// 查询go goroutineID正则
+var InsGorountineIdReg *regexp.Regexp
+
+func init() {
+	InsGorountineIdReg, _ = regexp.Compile(`(goroutine \d+) \[running\]`)
+	//findStrs := InsGorountineIdReg.FindStringSubmatch(string(debug.Stack()))
+	//fmt.Println("findStrs=", findStrs) //打印 空数组
 }
