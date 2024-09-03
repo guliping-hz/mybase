@@ -21,7 +21,7 @@ func (r *ClientTarget) startRPCClient(ctx context.Context, target string, newF N
 	r.target = target
 
 	//r.Pool, _ = grpcpool.New(func() (*grpc.ClientConn, error) {
-	//	return grpc.DialContext(ctx, target, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	//	return grpc.DialContext(Ctx, target, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	//}, 5, 5, 0)
 
 	conn, _ := grpc.DialContext(ctx, target, grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -37,12 +37,12 @@ type BalanceConnectPool struct {
 type Clients struct {
 	Targets []string
 	dict    sync.Map //map[string]*BalanceConnectPool
-	ctx     context.Context
+	Ctx     context.Context
 }
 
 func NewClients(ctx context.Context, targets []string, except *string, newF NewClientF, poolCnt int) *Clients {
 	clients := new(Clients)
-	clients.ctx = ctx
+	clients.Ctx = ctx
 	clients.Targets = targets
 
 	for i := range targets {
