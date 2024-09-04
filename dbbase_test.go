@@ -76,3 +76,7 @@ func TestTimeToString(t *testing.T) {
 	}
 	t.Logf("%+v\n", output)
 }
+
+func TestPatchCreate(t *testing.T) {
+	//批量插入
+}

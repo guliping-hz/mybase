@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"github.com/go-redis/redis/v8"
 	"github.com/mohae/deepcopy"
+	"github.com/robfig/cron/v3"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+	"gorm.io/gorm/schema"
 	"log"
 	"os"
 	"reflect"
@@ -71,8 +73,8 @@ const (
 	TableSplitYear
 )
 
-type TableCanSplit interface {
-	Key() string
+type TableSplit interface {
+	schema.Tabler
 	SplitType() TableSplitType
 }
 
@@ -83,10 +85,10 @@ type DBMgrBase struct {
 
 	insertStmtCache sync.Map
 
-	patchSqlCtx    context.Context
-	patchSqlCancel context.CancelFunc
-	patchSqlMutex  sync.Mutex
-	patchSqlDict   map[string][]any
+	patchSqlMutex sync.Mutex
+	patchSqlCtx   context.Context
+	patchSqlDict  map[string][]any
+	c             *cron.Cron
 }
 
 func (d *DBMgrBase) InitDB(maxDBCon int, ctx context.Context, config *gorm.Config, reloadF func(), dst ...any) error {
@@ -152,7 +154,7 @@ func (d *DBMgrBase) InitDB(maxDBCon int, ctx context.Context, config *gorm.Confi
 	d.DbInst.SetMaxOpenConns(maxDBCon)
 
 	reloadF()
-	go func(ctx context.Context) {
+	go func() {
 		var chanSignal = make(chan bool, 3) //同一个时间最多只有三个重新加载的通知
 		for {
 			select {
@@ -164,48 +166,70 @@ func (d *DBMgrBase) InitDB(maxDBCon int, ctx context.Context, config *gorm.Confi
 				return
 			}
 		}
-	}(ctx)
+	}()
 
+	var ctxCancelF context.CancelFunc
+	d.patchSqlCtx, ctxCancelF = context.WithCancel(context.Background())
 	d.patchSqlDict = make(map[string][]any)
-	d.patchSqlCtx, d.patchSqlCancel = context.WithCancel(context.Background())
-	go func(ctx context.Context) {
-		ticker := time.NewTicker(time.Minute * 3)
-
-		tickSaveToDB := func() {
-			d.patchSqlMutex.Lock()
-			defer d.patchSqlMutex.Unlock()
-
-			for _, v := range d.patchSqlDict {
-				if len(v) > 0 {
-					if _, err := d.CallExecNoStmt(v.PatchSql, false); err == nil { //成功插入数据了
-						v.PatchSql = ""
-						v.Cnt = 0
-					}
-				}
-			}
-		}
-
+	d.c = cron.New(cron.WithSeconds())
+	d.c.AddFunc("0 */2 * * * *", func() {
+		d.patchInsertAll()
+	})
+	d.c.Start()
+	go func() {
 		for {
 			select {
-			case <-ticker.C:
-				tickSaveToDB()
 			case <-ctx.Done():
-				tickSaveToDB()
-				//DB完成
-				d.patchSqlCancel()
+				d.c.Stop()
+				d.patchInsertAll()
+				ctxCancelF()
 				return
 			}
 		}
-	}(ctx)
+	}()
 
 	return err
 }
 
-func (d *DBMgrBase) Create(logs []any) {
-	if len(logs) == 0 {
-		return
+func (d *DBMgrBase) Wait() {
+	<-d.patchSqlCtx.Done()
+}
+
+func (d *DBMgrBase) patchInsertAll() {
+	d.patchSqlMutex.Lock()
+	defer d.patchSqlMutex.Unlock()
+
+	for k, v := range d.patchSqlDict {
+		if len(v) > 0 {
+			d.GormDb.Table(k).Create(v)
+			d.patchSqlDict[k] = v[:0]
+		}
 	}
-	d.GormDb.Create(logs)
+}
+
+func (d *DBMgrBase) Create(log any) (tx *gorm.DB) {
+	if t, ok := log.(TableSplit); ok && t.SplitType() != TableSplitNo {
+		d.patchSqlMutex.Lock()
+		defer d.patchSqlMutex.Unlock()
+
+		key := t.TableName()
+		if _, ok := d.patchSqlDict[key]; ok {
+			d.patchSqlDict[key] = append(d.patchSqlDict[key], log)
+
+			if len(d.patchSqlDict[key]) >= 1000 {
+				//短时间累计很多数据，需要立刻插入
+				tx = d.GormDb.Table(key).Create(d.patchSqlDict[key])
+				d.patchSqlDict[key] = make([]any, 0)
+				return
+			}
+		} else {
+			d.patchSqlDict[key] = make([]any, 1)
+			d.patchSqlDict[key][0] = log
+		}
+		return nil
+	} else {
+		return d.GormDb.Create(log)
+	}
 }
 
 func (d *DBMgrBase) CheckDBConnect() error {
