@@ -1,12 +1,19 @@
 package mybase
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"github.com/go-redis/redis/v8"
 	"github.com/mohae/deepcopy"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
+	"log"
+	"os"
 	"reflect"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -51,11 +58,154 @@ func WrapSql(query string, args ...any) string {
 	})
 }
 
+type TableSplitType int
+
+const (
+	//不分表
+	TableSplitNo = iota
+	//按天分表
+	TableSplitDay
+	//按月分表
+	TableSplitMonth
+	//按年分表
+	TableSplitYear
+)
+
+type TableCanSplit interface {
+	Key() string
+	SplitType() TableSplitType
+}
+
 type DBMgrBase struct {
 	DbInst    *sql.DB
+	GormDb    *gorm.DB
 	RedisInst *redis.Client
 
 	insertStmtCache sync.Map
+
+	patchSqlCtx    context.Context
+	patchSqlCancel context.CancelFunc
+	patchSqlMutex  sync.Mutex
+	patchSqlDict   map[string][]any
+}
+
+func (d *DBMgrBase) InitDB(maxDBCon int, ctx context.Context, config *gorm.Config, reloadF func(), dst ...any) error {
+	var err error
+	dbHost := os.Getenv("db_host")
+	dbPwd := os.Getenv("db_pwd")
+	redisHost := os.Getenv("redis_host")
+	redisPwd := os.Getenv("redis_pwd")
+	redisDb, err := strconv.Atoi(os.Getenv("redis_db"))
+	if err != nil {
+		return err
+	}
+
+	dbFullPath := fmt.Sprintf(dbHost, dbPwd)
+	fmt.Printf("InitDB Host=%s,Redis=%s[%s][%d]\n", dbFullPath, redisHost, redisPwd, redisDb)
+
+	dsn := dbFullPath //+ "&parseTime=True&loc=Local"
+
+	if config == nil {
+		config = &gorm.Config{
+			Logger: logger.New(log.New(&LogWriter{}, "", 0), logger.Config{
+				SlowThreshold:             200 * time.Millisecond,
+				LogLevel:                  logger.Warn,
+				IgnoreRecordNotFoundError: false,
+				Colorful:                  false,
+			}),
+		}
+	}
+	db, err := gorm.Open(mysql.Open(dsn), config)
+	if err != nil {
+		return err
+	}
+	//只能迁移表。字段消失的话不会删掉旧的字段。很棒
+	//&ActivityLog{}, &ServerCfg{}, &NlLog{}, &OnlineCountLog{}, &FlavorCfg{}, &ActivityCfg{},
+	err = db.AutoMigrate(dst)
+	if err != nil {
+		return err
+	}
+
+	d.GormDb = db
+
+	//d.DbInst, err = sql.Open("mysql", dbFullPath)
+	d.DbInst, err = db.DB()
+	if err != nil {
+		return err
+	}
+
+	d.RedisInst = redis.NewClient(&redis.Options{
+		Addr:     redisHost,
+		Password: redisPwd,
+		DB:       redisDb, // use default DB
+	})
+
+	//这里成功，并不能代表真的成功。。。，可能这个数据库服务器压根访问不到
+	//所以我们这里尝试ping一下
+	err = d.CheckDBConnectEx(true)
+	if err != nil {
+		//fmt.Println("Init DB module error=", err)
+		return err
+	}
+
+	//设置当前同时打开的最大连接数。
+	d.DbInst.SetMaxOpenConns(maxDBCon)
+
+	reloadF()
+	go func(ctx context.Context) {
+		var chanSignal = make(chan bool, 3) //同一个时间最多只有三个重新加载的通知
+		for {
+			select {
+			case <-chanSignal:
+				reloadF()
+				time.Sleep(time.Second * 10) //10秒内响应最多1个请求
+				D("reloadCfg")
+			case <-ctx.Done():
+				return
+			}
+		}
+	}(ctx)
+
+	d.patchSqlDict = make(map[string][]any)
+	d.patchSqlCtx, d.patchSqlCancel = context.WithCancel(context.Background())
+	go func(ctx context.Context) {
+		ticker := time.NewTicker(time.Minute * 3)
+
+		tickSaveToDB := func() {
+			d.patchSqlMutex.Lock()
+			defer d.patchSqlMutex.Unlock()
+
+			for _, v := range d.patchSqlDict {
+				if len(v) > 0 {
+					if _, err := d.CallExecNoStmt(v.PatchSql, false); err == nil { //成功插入数据了
+						v.PatchSql = ""
+						v.Cnt = 0
+					}
+				}
+			}
+		}
+
+		for {
+			select {
+			case <-ticker.C:
+				tickSaveToDB()
+			case <-ctx.Done():
+				tickSaveToDB()
+				//DB完成
+				d.patchSqlCancel()
+				return
+			}
+		}
+	}(ctx)
+
+	return err
+}
+
+func (d *DBMgrBase) Create(logs []any) {
+	if len(logs) == 0 {
+		return
+	}
+	d.GormDb.Create(logs)
 }
 
 func (d *DBMgrBase) CheckDBConnect() error {
