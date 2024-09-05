@@ -251,10 +251,14 @@ func (d *DBMgrBase) Create(log any) (tx *gorm.DB, err error) {
 				} else {
 					rTypeField := rT.Field(i)
 					name := rTypeField.Tag.Get("json")
-					if name == "" {
-						name = rTypeField.Name
+					if name == "" || name == "-" {
+						continue
 					}
-					newV[name] = rValField.Interface()
+					if name == "updated_at" {
+						newV[name] = time.Now()
+					} else {
+						newV[name] = rValField.Interface()
+					}
 				}
 			}
 		}
