@@ -60,22 +60,20 @@ func WrapSql(query string, args ...any) string {
 	})
 }
 
-type TableSplitType int
-
 const (
-	//不分表
-	TableSplitNo = iota
-	//按天分表
-	TableSplitDay
-	//按月分表
-	TableSplitMonth
-	//按年分表
-	TableSplitYear
+	TimeSplitDay   = "20060102"
+	TimeSplitMonth = "200601"
+	TimeSplitYear  = "2006"
 )
 
 type TableSplit interface {
 	schema.Tabler
-	SplitType() TableSplitType
+	IsSplit() bool
+}
+
+type PatchInsert struct {
+	Logs  []map[string]any
+	Model any
 }
 
 type DBMgrBase struct {
@@ -85,16 +83,16 @@ type DBMgrBase struct {
 
 	insertStmtCache sync.Map
 
+	chanInsert    chan string
 	patchSqlMutex sync.Mutex
 	patchSqlCtx   context.Context
-	patchSqlDict  map[string][]any
+	patchSqlDict  map[string]*PatchInsert
 	c             *cron.Cron
 }
 
 func (d *DBMgrBase) InitDB(maxDBCon int, ctx context.Context, config *gorm.Config, reloadF func(), dst ...any) error {
 	var err error
-	dbHost := os.Getenv("db_host")
-	dbPwd := os.Getenv("db_pwd")
+	dsn := os.Getenv("db_dsn")
 	redisHost := os.Getenv("redis_host")
 	redisPwd := os.Getenv("redis_pwd")
 	redisDb, err := strconv.Atoi(os.Getenv("redis_db"))
@@ -102,10 +100,7 @@ func (d *DBMgrBase) InitDB(maxDBCon int, ctx context.Context, config *gorm.Confi
 		return err
 	}
 
-	dbFullPath := fmt.Sprintf(dbHost, dbPwd)
-	fmt.Printf("InitDB Host=%s,Redis=%s[%s][%d]\n", dbFullPath, redisHost, redisPwd, redisDb)
-
-	dsn := dbFullPath //+ "&parseTime=True&loc=Local"
+	fmt.Printf("InitDB Host=%s,Redis=%s[%s][%d]\n", dsn, redisHost, redisPwd, redisDb)
 
 	if config == nil {
 		config = &gorm.Config{
@@ -123,7 +118,7 @@ func (d *DBMgrBase) InitDB(maxDBCon int, ctx context.Context, config *gorm.Confi
 	}
 	//只能迁移表。字段消失的话不会删掉旧的字段。很棒
 	//&ActivityLog{}, &ServerCfg{}, &NlLog{}, &OnlineCountLog{}, &FlavorCfg{}, &ActivityCfg{},
-	err = db.AutoMigrate(dst)
+	err = db.AutoMigrate(dst...)
 	if err != nil {
 		return err
 	}
@@ -153,35 +148,44 @@ func (d *DBMgrBase) InitDB(maxDBCon int, ctx context.Context, config *gorm.Confi
 	//设置当前同时打开的最大连接数。
 	d.DbInst.SetMaxOpenConns(maxDBCon)
 
-	reloadF()
-	go func() {
-		var chanSignal = make(chan bool, 3) //同一个时间最多只有三个重新加载的通知
-		for {
-			select {
-			case <-chanSignal:
-				reloadF()
-				time.Sleep(time.Second * 10) //10秒内响应最多1个请求
-				D("reloadCfg")
-			case <-ctx.Done():
-				return
+	if reloadF != nil {
+		reloadF()
+		go func() {
+			var chanSignal = make(chan bool, 3) //同一个时间最多只有三个重新加载的通知
+			for {
+				select {
+				case <-chanSignal:
+					reloadF()
+					time.Sleep(time.Second * 10) //10秒内响应最多1个请求
+					D("reloadCfg")
+				case <-ctx.Done():
+					return
+				}
 			}
-		}
-	}()
+		}()
+	}
+
+	d.chanInsert = make(chan string)
 
 	var ctxCancelF context.CancelFunc
 	d.patchSqlCtx, ctxCancelF = context.WithCancel(context.Background())
-	d.patchSqlDict = make(map[string][]any)
+	d.patchSqlDict = make(map[string]*PatchInsert)
 	d.c = cron.New(cron.WithSeconds())
-	d.c.AddFunc("0 */2 * * * *", func() {
-		d.patchInsertAll()
+	//d.c.AddFunc("0 */2 * * * *", func() {
+	//	d.patchInsertAll("")
+	//})
+	d.c.AddFunc("0/10 * * * * *", func() {
+		d.patchInsertAll("")
 	})
 	d.c.Start()
 	go func() {
 		for {
 			select {
+			case key := <-d.chanInsert:
+				d.patchInsertAll(key)
 			case <-ctx.Done():
 				d.c.Stop()
-				d.patchInsertAll()
+				d.patchInsertAll("")
 				ctxCancelF()
 				return
 			}
@@ -195,40 +199,90 @@ func (d *DBMgrBase) Wait() {
 	<-d.patchSqlCtx.Done()
 }
 
-func (d *DBMgrBase) patchInsertAll() {
+func (d *DBMgrBase) patchInsertAll(key string) {
+	fmt.Println("patchInsertAll")
 	d.patchSqlMutex.Lock()
 	defer d.patchSqlMutex.Unlock()
 
-	for k, v := range d.patchSqlDict {
-		if len(v) > 0 {
-			d.GormDb.Table(k).Create(v)
-			d.patchSqlDict[k] = v[:0]
+	insertF := func(k string, v *PatchInsert) {
+		if !d.GormDb.Migrator().HasTable(k) {
+			d.GormDb.Table(k).Migrator().CreateTable(v.Model)
+		}
+
+		//panic报错  目前的Gorm不支持 []any  那么只能暂时先把log以 []map[string]any的形式存起来
+		if tx := d.GormDb.Table(k).Model(v.Model).Create(v.Logs); tx.Error != nil {
+			fmt.Println("patchInsertAll err=", tx.Error)
+		}
+		delete(d.patchSqlDict, k)
+	}
+
+	if key == "" {
+		for k, v := range d.patchSqlDict {
+			insertF(k, v)
+		}
+	} else {
+		if v, ok := d.patchSqlDict[key]; ok {
+			insertF(key, v)
 		}
 	}
 }
 
-func (d *DBMgrBase) Create(log any) (tx *gorm.DB) {
-	if t, ok := log.(TableSplit); ok && t.SplitType() != TableSplitNo {
+func (d *DBMgrBase) Create(log any) (tx *gorm.DB, err error) {
+	if t, ok := log.(TableSplit); ok && t.IsSplit() {
+
+		rVFirst := reflect.ValueOf(log)
+		for rVFirst.Kind() == reflect.Ptr {
+			rVFirst = rVFirst.Elem()
+		}
+		if rVFirst.Kind() != reflect.Struct {
+			panic(fmt.Sprintf("need struct give %s", rVFirst.Kind().String()))
+		}
+
+		newV := make(map[string]any)
+		var searchF func(reflect.Value)
+		searchF = func(rV reflect.Value) {
+			rT := rV.Type()
+			for i := 0; i < rV.NumField(); i++ {
+				rValField := rV.Field(i)
+				rValType := rValField.Type()
+
+				if rValType.Kind() == reflect.Struct && rValType.String() != "time.Time" && rValType.String() != "*time.Time" {
+					searchF(rValField)
+				} else {
+					rTypeField := rT.Field(i)
+					name := rTypeField.Tag.Get("json")
+					if name == "" {
+						name = rTypeField.Name
+					}
+					newV[name] = rValField.Interface()
+				}
+			}
+		}
+		searchF(rVFirst)
+
 		d.patchSqlMutex.Lock()
 		defer d.patchSqlMutex.Unlock()
 
 		key := t.TableName()
 		if _, ok := d.patchSqlDict[key]; ok {
-			d.patchSqlDict[key] = append(d.patchSqlDict[key], log)
+			d.patchSqlDict[key].Logs = append(d.patchSqlDict[key].Logs, newV)
 
-			if len(d.patchSqlDict[key]) >= 1000 {
+			if len(d.patchSqlDict[key].Logs) >= 1000 {
 				//短时间累计很多数据，需要立刻插入
-				tx = d.GormDb.Table(key).Create(d.patchSqlDict[key])
-				d.patchSqlDict[key] = make([]any, 0)
-				return
+				go d.patchInsertAll(key)
+				return nil, nil
 			}
 		} else {
-			d.patchSqlDict[key] = make([]any, 1)
-			d.patchSqlDict[key][0] = log
+			one := &PatchInsert{
+				Logs:  make([]map[string]any, 1),
+				Model: log,
+			}
+			one.Logs[0] = newV
+			d.patchSqlDict[key] = one
 		}
-		return nil
+		return nil, nil
 	} else {
-		return d.GormDb.Create(log)
+		return d.GormDb.Create(log), nil
 	}
 }
 

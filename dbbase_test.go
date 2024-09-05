@@ -1,9 +1,11 @@
 package mybase
 
 import (
+	"context"
 	"database/sql"
 	"github.com/bytedance/sonic"
-	_ "github.com/go-sql-driver/mysql"
+	"gorm.io/gorm"
+	"os"
 	"reflect"
 	"testing"
 	"time"
@@ -77,6 +79,122 @@ func TestTimeToString(t *testing.T) {
 	t.Logf("%+v\n", output)
 }
 
+// 游戏服使用，后台用另一个
+type IdCreateS4 struct {
+	ID        uint           `gorm:"primarykey" json:"id"`    // 主键ID
+	CreatedAt time.Time      `gorm:"index" json:"created_at"` // 创建时间
+	UpdatedAt time.Time      `json:"updated_at"`              // 更新时间
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at"` // 删除时间
+}
+
+type CoinLog struct {
+	IdCreateS4
+	Uid  int64 `gorm:"type:bigint;comment:UID" json:"uid"`
+	Coin int64 `gorm:"type:bigint;comment:金币" json:"coin"`
+}
+
+func (c *CoinLog) TableName() string {
+	name := "coin_log_"
+	if c.CreatedAt.IsZero() {
+		return name + time.Now().Format(TimeSplitDay)
+	}
+	return name + c.CreatedAt.Format(TimeSplitDay)
+}
+func (c *CoinLog) IsSplit() bool {
+	return true
+}
+
 func TestPatchCreate(t *testing.T) {
 	//批量插入
+	os.Setenv("db_dsn", "root:111000@tcp(127.0.0.1:3306)/test?charset=utf8mb4&loc=Local&parseTime=True")
+	os.Setenv("redis_host", "127.0.0.1:6379")
+	os.Setenv("redis_pwd", "111000")
+	os.Setenv("redis_db", "0")
+
+	imp := new(DBMgrBase)
+	if err := imp.InitDB(100, context.Background(), nil, nil, &CoinLog{}); err != nil {
+		t.Error(err)
+		return
+	}
+
+	//t.Log(time.Now().Format(time.RFC3339))
+	getTm := func(tm string) time.Time {
+		tm2, err := time.Parse(time.RFC3339, tm)
+		if err != nil {
+			t.Error(err)
+		}
+		return tm2
+	}
+
+	t1, t2, t3 := &CoinLog{
+		IdCreateS4: IdCreateS4{CreatedAt: getTm("2024-09-04T23:50:05+08:00")},
+		Uid:        1,
+		Coin:       20000,
+	}, &CoinLog{
+		IdCreateS4: IdCreateS4{CreatedAt: getTm("2024-09-04T23:52:05+08:00")},
+		Uid:        1,
+		Coin:       19900,
+	}, &CoinLog{
+		IdCreateS4: IdCreateS4{CreatedAt: getTm("2024-09-05T00:52:05+08:00")},
+		Uid:        1,
+		Coin:       19000,
+	}
+
+	//imp.GormDb.Create([]*CoinLog{t1, t2})
+
+	//err := imp.GormDb.Table(t1.TableName()).Migrator().CreateTable(t1)
+	//if err != nil {
+	//	t.Error(err)
+	//	return
+	//}
+
+	imp.Create(t1)
+	imp.Create(t2)
+	imp.Create(t3)
+	imp.patchInsertAll("")
+
+	//time.Sleep(time.Second * 600)
+
+	//imp.Create(&CoinLog{
+	//	IdCreate4: IdCreate4{CreatedAt: getTm("2024-09-04T23:54:05+08:00")},
+	//	Uid:       1,
+	//	Coin:      30000,
+	//})
+	//imp.Create(&CoinLog{
+	//	IdCreate4: IdCreate4{CreatedAt: getTm("2024-09-04T23:55:05+08:00")},
+	//	Uid:       1,
+	//	Coin:      29900,
+	//})
+	//imp.Create(&CoinLog{
+	//	IdCreate4: IdCreate4{CreatedAt: getTm("2024-09-04T23:58:05+08:00")},
+	//	Uid:       1,
+	//	Coin:      29800,
+	//})
+	//imp.Create(&CoinLog{
+	//	IdCreate4: IdCreate4{CreatedAt: getTm("2024-09-04T23:59:05+08:00")},
+	//	Uid:       1,
+	//	Coin:      29700,
+	//})
+	//imp.Create(&CoinLog{
+	//	IdCreate4: IdCreate4{CreatedAt: getTm("2024-09-05T00:01:05+08:00")},
+	//	Uid:       1,
+	//	Coin:      29600,
+	//})
+	//imp.Create(&CoinLog{
+	//	IdCreate4: IdCreate4{CreatedAt: getTm("2024-09-05T00:02:05+08:00")},
+	//	Uid:       1,
+	//	Coin:      39600,
+	//})
+	//imp.Create(&CoinLog{
+	//	IdCreate4: IdCreate4{CreatedAt: getTm("2024-09-05T00:05:05+08:00")},
+	//	Uid:       1,
+	//	Coin:      39500,
+	//})
+	//imp.Create(&CoinLog{
+	//	IdCreate4: IdCreate4{CreatedAt: getTm("2024-09-05T00:10:05+08:00")},
+	//	Uid:       1,
+	//	Coin:      39400,
+	//})
+
+	//time.Sleep(time.Second * 600)
 }
