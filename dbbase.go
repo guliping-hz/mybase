@@ -93,7 +93,7 @@ type DBMgrBase struct {
 	chanSignal chan bool
 }
 
-func (d *DBMgrBase) InitDB(ctx context.Context, maxDBCon int, config *gorm.Config, batchTag string, reloadF func(), dst ...any) error {
+func (d *DBMgrBase) Init(ctx context.Context, maxDBCon int, config *gorm.Config, batchTag string, reloadF func(), dst ...any) error {
 	var err error
 	dsn := os.Getenv("db_dsn")
 	redisHost := os.Getenv("redis_host")
@@ -103,7 +103,7 @@ func (d *DBMgrBase) InitDB(ctx context.Context, maxDBCon int, config *gorm.Confi
 		return err
 	}
 
-	fmt.Printf("InitDB Host=%s,Redis=%s[%s][%d]\n", dsn, redisHost, redisPwd, redisDb)
+	fmt.Printf("Init Host=%s,Redis=%s[%s][%d]\n", dsn, redisHost, redisPwd, redisDb)
 
 	if config == nil {
 		config = &gorm.Config{

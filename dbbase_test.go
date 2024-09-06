@@ -113,7 +113,7 @@ func TestPatchCreate(t *testing.T) {
 	os.Setenv("redis_db", "0")
 
 	imp := new(DBMgrBase)
-	if err := imp.InitDB(context.Background(), 100, nil, "json", nil, &CoinLog{}); err != nil {
+	if err := imp.Init(context.Background(), 100, nil, "json", nil, &CoinLog{}); err != nil {
 		t.Error(err)
 		return
 	}
