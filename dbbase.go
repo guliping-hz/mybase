@@ -163,8 +163,8 @@ func (d *DBMgrBase) Init(ctx context.Context, maxDBCon int, config *gorm.Config,
 
 	if reloadF != nil {
 		reloadF()
+		d.chanSignal = make(chan bool, 3) //同一个时间最多只有三个重新加载的通知
 		go func() {
-			d.chanSignal = make(chan bool, 3) //同一个时间最多只有三个重新加载的通知
 			for {
 				select {
 				case <-d.chanSignal:
@@ -202,6 +202,10 @@ func (d *DBMgrBase) Init(ctx context.Context, maxDBCon int, config *gorm.Config,
 }
 
 func (d *DBMgrBase) UpdateCfg() bool {
+	if d.chanSignal == nil {
+		return false
+	}
+
 	I("UpdateCfg len(chanSignal)=%d", len(d.chanSignal))
 	if len(d.chanSignal) > 1 { //同一时刻的通知太多了。。
 		return false
