@@ -289,10 +289,8 @@ func (d *DBMgrBase) Create(log any) (tx *gorm.DB) {
 
 		if _, ok := d.patchSqlDict[key]; ok {
 			d.patchSqlDict[key].Logs = append(d.patchSqlDict[key].Logs, newV)
-			//d.patchSqlDict[key] = append(d.patchSqlDict[key], log)
 
-			if len(d.patchSqlDict[key].Logs) >= 1000 {
-				//if len(d.patchSqlDict[key]) >= 1000 {
+			if len(d.patchSqlDict[key].Logs) >= d.createBatchSize {
 				//短时间累计很多数据，需要立刻插入
 				go d.patchInsertAll(key)
 				return nil
@@ -302,9 +300,6 @@ func (d *DBMgrBase) Create(log any) (tx *gorm.DB) {
 				Logs:  []map[string]any{newV},
 				Model: log,
 			}
-
-			//d.patchSqlDict[key] = make([]any, 1)
-			//d.patchSqlDict[key][0] = log
 		}
 		return nil
 	} else {
