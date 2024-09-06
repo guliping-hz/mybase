@@ -89,8 +89,9 @@ type IdCreateS4 struct {
 
 type CoinLog struct {
 	IdCreateS4
-	Uid  int64 `gorm:"type:bigint;comment:UID" json:"uid"`
-	Coin int64 `gorm:"type:bigint;comment:金币" json:"coin"`
+	Uid  int64      `gorm:"type:bigint;comment:UID" json:"uid"`
+	Coin int64      `gorm:"type:bigint;comment:金币" json:"coin"`
+	Tm   *time.Time `gorm:"type:datetime;comment:时间" json:"tm"`
 }
 
 func (c *CoinLog) TableName() string {
@@ -112,7 +113,7 @@ func TestPatchCreate(t *testing.T) {
 	os.Setenv("redis_db", "0")
 
 	imp := new(DBMgrBase)
-	if err := imp.InitDB(100, context.Background(), nil, nil, &CoinLog{}); err != nil {
+	if err := imp.InitDB(context.Background(), 100, nil, "json", nil, &CoinLog{}); err != nil {
 		t.Error(err)
 		return
 	}
@@ -126,7 +127,7 @@ func TestPatchCreate(t *testing.T) {
 		return tm2
 	}
 
-	t1, t2, t3 := &CoinLog{
+	t1, t2, t3, t4 := &CoinLog{
 		IdCreateS4: IdCreateS4{CreatedAt: getTm("2024-09-04T23:50:05+08:00")},
 		Uid:        1,
 		Coin:       20000,
@@ -138,6 +139,10 @@ func TestPatchCreate(t *testing.T) {
 		IdCreateS4: IdCreateS4{CreatedAt: getTm("2024-09-05T00:52:05+08:00")},
 		Uid:        1,
 		Coin:       19000,
+	}, &CoinLog{
+		IdCreateS4: IdCreateS4{},
+		Uid:        1,
+		Coin:       18000,
 	}
 
 	//imp.GormDb.Create([]*CoinLog{t1, t2})
@@ -151,9 +156,10 @@ func TestPatchCreate(t *testing.T) {
 	imp.Create(t1)
 	imp.Create(t2)
 	imp.Create(t3)
-	imp.patchInsertAll("")
+	imp.Create(t4)
+	//imp.patchInsertAll("")
 
-	//time.Sleep(time.Second * 600)
+	time.Sleep(time.Second * 600)
 
 	//imp.Create(&CoinLog{
 	//	IdCreate4: IdCreate4{CreatedAt: getTm("2024-09-04T23:54:05+08:00")},

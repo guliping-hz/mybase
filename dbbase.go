@@ -83,14 +83,15 @@ type DBMgrBase struct {
 
 	insertStmtCache sync.Map
 
-	chanInsert    chan string
-	patchSqlMutex sync.Mutex
-	patchSqlCtx   context.Context
-	patchSqlDict  map[string]*PatchInsert
-	c             *cron.Cron
+	patchSqlMutex   sync.Mutex
+	patchSqlCtx     context.Context
+	patchSqlDict    map[string]*PatchInsert
+	c               *cron.Cron
+	createBatchSize int
+	createBatchTag  string
 }
 
-func (d *DBMgrBase) InitDB(maxDBCon int, ctx context.Context, config *gorm.Config, reloadF func(), dst ...any) error {
+func (d *DBMgrBase) InitDB(ctx context.Context, maxDBCon int, config *gorm.Config, batchTag string, reloadF func(), dst ...any) error {
 	var err error
 	dsn := os.Getenv("db_dsn")
 	redisHost := os.Getenv("redis_host")
@@ -110,8 +111,18 @@ func (d *DBMgrBase) InitDB(maxDBCon int, ctx context.Context, config *gorm.Confi
 				IgnoreRecordNotFoundError: false,
 				Colorful:                  false,
 			}),
+			CreateBatchSize: 1000,
 		}
 	}
+	d.createBatchSize = config.CreateBatchSize
+	if d.createBatchSize < 100 {
+		d.createBatchSize = 100
+	}
+	d.createBatchTag = batchTag
+	if d.createBatchTag == "" {
+		d.createBatchTag = "json"
+	}
+
 	db, err := gorm.Open(mysql.Open(dsn), config)
 	if err != nil {
 		return err
@@ -165,24 +176,17 @@ func (d *DBMgrBase) InitDB(maxDBCon int, ctx context.Context, config *gorm.Confi
 		}()
 	}
 
-	d.chanInsert = make(chan string)
-
 	var ctxCancelF context.CancelFunc
 	d.patchSqlCtx, ctxCancelF = context.WithCancel(context.Background())
 	d.patchSqlDict = make(map[string]*PatchInsert)
 	d.c = cron.New(cron.WithSeconds())
-	//d.c.AddFunc("0 */2 * * * *", func() {
-	//	d.patchInsertAll("")
-	//})
-	d.c.AddFunc("0/10 * * * * *", func() {
+	d.c.AddFunc("0 */2 * * * *", func() {
 		d.patchInsertAll("")
 	})
 	d.c.Start()
 	go func() {
 		for {
 			select {
-			case key := <-d.chanInsert:
-				d.patchInsertAll(key)
 			case <-ctx.Done():
 				d.c.Stop()
 				d.patchInsertAll("")
@@ -211,7 +215,7 @@ func (d *DBMgrBase) patchInsertAll(key string) {
 
 		//panic报错  目前的Gorm不支持 []any  那么只能暂时先把log以 []map[string]any的形式存起来
 		if tx := d.GormDb.Table(k).Model(v.Model).Create(v.Logs); tx.Error != nil {
-			fmt.Println("patchInsertAll err=", tx.Error)
+			E("patchInsertAll %s err=%s", key, tx.Error.Error())
 		}
 		delete(d.patchSqlDict, k)
 	}
@@ -227,7 +231,7 @@ func (d *DBMgrBase) patchInsertAll(key string) {
 	}
 }
 
-func (d *DBMgrBase) Create(log any) (tx *gorm.DB, err error) {
+func (d *DBMgrBase) Create(log any) (tx *gorm.DB) {
 	if t, ok := log.(TableSplit); ok && t.IsSplit() {
 
 		rVFirst := reflect.ValueOf(log)
@@ -246,7 +250,18 @@ func (d *DBMgrBase) Create(log any) (tx *gorm.DB, err error) {
 				rValField := rV.Field(i)
 				rValType := rValField.Type()
 
-				if rValType.Kind() == reflect.Struct && rValType.String() != "time.Time" && rValType.String() != "*time.Time" {
+				for rValField.Kind() == reflect.Ptr {
+					if rValField.IsNil() {
+						rValType = nil
+						break
+					} else {
+						rValField = rValField.Elem()
+						rValType = rValField.Type()
+					}
+				}
+
+				if rValType != nil && rValType.Kind() == reflect.Struct && rValType.String() != "time.Time" {
+					//时间结构不解析
 					searchF(rValField)
 				} else {
 					rTypeField := rT.Field(i)
@@ -254,7 +269,10 @@ func (d *DBMgrBase) Create(log any) (tx *gorm.DB, err error) {
 					if name == "" || name == "-" {
 						continue
 					}
-					if name == "updated_at" {
+
+					if name == "created_at" && rValField.IsZero() {
+						newV[name] = time.Now()
+					} else if name == "updated_at" {
 						newV[name] = time.Now()
 					} else {
 						newV[name] = rValField.Interface()
@@ -264,29 +282,33 @@ func (d *DBMgrBase) Create(log any) (tx *gorm.DB, err error) {
 		}
 		searchF(rVFirst)
 
+		key := t.TableName()
+
 		d.patchSqlMutex.Lock()
 		defer d.patchSqlMutex.Unlock()
 
-		key := t.TableName()
 		if _, ok := d.patchSqlDict[key]; ok {
 			d.patchSqlDict[key].Logs = append(d.patchSqlDict[key].Logs, newV)
+			//d.patchSqlDict[key] = append(d.patchSqlDict[key], log)
 
 			if len(d.patchSqlDict[key].Logs) >= 1000 {
+				//if len(d.patchSqlDict[key]) >= 1000 {
 				//短时间累计很多数据，需要立刻插入
 				go d.patchInsertAll(key)
-				return nil, nil
+				return nil
 			}
 		} else {
-			one := &PatchInsert{
-				Logs:  make([]map[string]any, 1),
+			d.patchSqlDict[key] = &PatchInsert{
+				Logs:  []map[string]any{newV},
 				Model: log,
 			}
-			one.Logs[0] = newV
-			d.patchSqlDict[key] = one
+
+			//d.patchSqlDict[key] = make([]any, 1)
+			//d.patchSqlDict[key][0] = log
 		}
-		return nil, nil
+		return nil
 	} else {
-		return d.GormDb.Create(log), nil
+		return d.GormDb.Create(log)
 	}
 }
 
