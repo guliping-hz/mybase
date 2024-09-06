@@ -89,6 +89,8 @@ type DBMgrBase struct {
 	c               *cron.Cron
 	createBatchSize int
 	createBatchTag  string
+
+	chanSignal chan bool
 }
 
 func (d *DBMgrBase) InitDB(ctx context.Context, maxDBCon int, config *gorm.Config, batchTag string, reloadF func(), dst ...any) error {
@@ -162,13 +164,13 @@ func (d *DBMgrBase) InitDB(ctx context.Context, maxDBCon int, config *gorm.Confi
 	if reloadF != nil {
 		reloadF()
 		go func() {
-			var chanSignal = make(chan bool, 3) //同一个时间最多只有三个重新加载的通知
+			d.chanSignal = make(chan bool, 3) //同一个时间最多只有三个重新加载的通知
 			for {
 				select {
-				case <-chanSignal:
+				case <-d.chanSignal:
 					reloadF()
 					time.Sleep(time.Second * 10) //10秒内响应最多1个请求
-					D("reloadCfg")
+					I("reloadCfg")
 				case <-ctx.Done():
 					return
 				}
@@ -197,6 +199,15 @@ func (d *DBMgrBase) InitDB(ctx context.Context, maxDBCon int, config *gorm.Confi
 	}()
 
 	return err
+}
+
+func (d *DBMgrBase) UpdateCfg() bool {
+	I("UpdateCfg len(chanSignal)=%d", len(d.chanSignal))
+	if len(d.chanSignal) > 1 { //同一时刻的通知太多了。。
+		return false
+	}
+	d.chanSignal <- true
+	return true
 }
 
 func (d *DBMgrBase) Wait() {
