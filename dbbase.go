@@ -219,7 +219,7 @@ func (d *DBMgrBase) Wait() {
 }
 
 func (d *DBMgrBase) patchInsertAll(key string) {
-	fmt.Println("patchInsertAll")
+	//fmt.Println("patchInsertAll")
 	d.patchSqlMutex.Lock()
 	defer d.patchSqlMutex.Unlock()
 
