@@ -308,18 +308,19 @@ func (d *DBMgrBase) CreateLimit(log any, limit int) (tx *gorm.DB) {
 
 		if _, ok := d.patchSqlDict[key]; ok {
 			d.patchSqlDict[key].Logs = append(d.patchSqlDict[key].Logs, newV)
-
-			if len(d.patchSqlDict[key].Logs) >= limit {
-				//短时间累计很多数据，需要立刻插入
-				go d.patchInsertAll(key)
-				return nil
-			}
 		} else {
 			d.patchSqlDict[key] = &PatchInsert{
 				Logs:  []map[string]any{newV},
 				Model: log,
 			}
 		}
+
+		if len(d.patchSqlDict[key].Logs) >= limit {
+			//短时间累计很多数据，需要立刻插入
+			go d.patchInsertAll(key)
+			return nil
+		}
+
 		return nil
 	} else {
 		return d.GormDb.Create(log)
