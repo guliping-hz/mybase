@@ -66,9 +66,9 @@ const (
 	TimeSplitYear  = "2006"
 )
 
-type TableSplit interface {
+type TableBatch interface {
 	schema.Tabler
-	IsSplit() bool
+	IsBatch() bool
 }
 
 type PatchInsert struct {
@@ -251,7 +251,7 @@ func (d *DBMgrBase) Create(log any) (tx *gorm.DB) {
 }
 
 func (d *DBMgrBase) CreateLimit(log any, limit int) (tx *gorm.DB) {
-	if t, ok := log.(TableSplit); ok && t.IsSplit() {
+	if t, ok := log.(TableBatch); ok && t.IsBatch() {
 
 		rVFirst := reflect.ValueOf(log)
 		for rVFirst.Kind() == reflect.Ptr {

@@ -101,7 +101,7 @@ func (c *CoinLog) TableName() string {
 	}
 	return name + c.CreatedAt.Format(TimeSplitDay)
 }
-func (c *CoinLog) IsSplit() bool {
+func (c *CoinLog) IsBatch() bool {
 	return true
 }
 
