@@ -126,7 +126,7 @@ def build_go(
 
         if srcDir and srcDir != "":
             # my_print("srcDir")
-            commond = ["go", "build", "-o", f"{targetDir}/{targetName}", "-C", srcDir]
+            commond = ["go", "build", "-C", srcDir, "-o", f"{targetDir}/{targetName}"]
             # my_print(commond)
             subprocess.check_output(commond)
             my_print(f"Go program compiled successfully to {targetDir}/{targetName}")
@@ -141,10 +141,10 @@ def build_go(
             commond = [
                 "go",
                 "build",
-                "-o",
-                f"{targetDir}/{targetName}",
                 "-C",
                 srcDir,
+                "-o",
+                f"{targetDir}/{targetName}",
                 srcFileBase,
             ]
             my_print(commond)
