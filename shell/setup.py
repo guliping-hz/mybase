@@ -870,13 +870,16 @@ def parse_to_setup():
 
     print("action=", args.action)
     if args.action == "start":
-        setup.start()
+        if not setup.start():
+            raise RuntimeError("exec fail")
     elif args.action == "upload":
-        setup.upload()
+        if not setup.upload():
+            raise RuntimeError("exec fail")
     elif args.action == "copy_start":
         if args.src == "":
             raise ValueError("copy src is empty")
-        setup.copy_start(args.src)
+        if not setup.copy_start(args.src):
+            raise RuntimeError("exec fail")
     else:
         raise ValueError("unknow action " + args.action)
 
