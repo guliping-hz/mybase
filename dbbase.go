@@ -96,11 +96,15 @@ type DBMgrBase struct {
 func (d *DBMgrBase) Init(ctx context.Context, maxDBCon int, config *gorm.Config, batchTag string, reloadF func(), dst ...any) error {
 	var err error
 	dsn := os.Getenv("db_dsn")
+
 	redisHost := os.Getenv("redis_host")
 	redisPwd := os.Getenv("redis_pwd")
-	redisDb, err := strconv.Atoi(os.Getenv("redis_db"))
-	if err != nil {
-		return err
+	redisDb := 0
+	if redisHost != "" {
+		redisDb, err = strconv.Atoi(os.Getenv("redis_db"))
+		if err != nil {
+			return err
+		}
 	}
 
 	fmt.Printf("Init Host=%s,Redis=%s[%s][%d]\n", dsn, redisHost, redisPwd, redisDb)
@@ -144,15 +148,17 @@ func (d *DBMgrBase) Init(ctx context.Context, maxDBCon int, config *gorm.Config,
 		return err
 	}
 
-	d.RedisInst = redis.NewClient(&redis.Options{
-		Addr:     redisHost,
-		Password: redisPwd,
-		DB:       redisDb, // use default DB
-	})
+	if redisHost != "" {
+		d.RedisInst = redis.NewClient(&redis.Options{
+			Addr:     redisHost,
+			Password: redisPwd,
+			DB:       redisDb, // use default DB
+		})
+	}
 
 	//这里成功，并不能代表真的成功。。。，可能这个数据库服务器压根访问不到
 	//所以我们这里尝试ping一下
-	err = d.CheckDBConnectEx(true)
+	err = d.CheckDBConnectEx(redisHost != "")
 	if err != nil {
 		//fmt.Println("Init DB module error=", err)
 		return err
