@@ -43,7 +43,7 @@ func (e H) ForceInt64(key string) int64 {
 			return ret
 		}
 	}
-	panic(fmt.Sprintf("%s can't convert to int64 kind:%s", key, rVKind.String()))
+	panic(fmt.Sprintf("%s can't convert to int64 kind:%s value:`%v`", key, rVKind.String(), dataI))
 }
 
 func (e H) ForceString(key string) string {

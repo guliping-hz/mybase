@@ -7,10 +7,11 @@ import (
 
 func TestEasyGet(t *testing.T) {
 	h := H{}
-	if err := json.Unmarshal([]byte(`{"a":"1111","b":222,"c":{"d":333}}`), &h); err != nil {
+	if err := json.Unmarshal([]byte(`{"a":"1111","b":222,"c":{"d":333},"e":"aa"}`), &h); err != nil {
 		t.Error(err)
 		return
 	}
+
 	if a, ok := h.GetString("a"); !ok {
 		t.Errorf("a not found")
 		return
@@ -46,4 +47,8 @@ func TestEasyGet(t *testing.T) {
 	gids := make([]int64, 0)
 	t.Log(h2.Get("gids", &gids))
 	t.Log(gids)
+
+	//测试崩溃。
+	e := h.ForceInt64("e")
+	t.Logf("e:%d\n", e)
 }
