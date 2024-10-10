@@ -192,14 +192,14 @@ func DecodeDb(input, output any) error {
 		//支持解析time.Time 转字符串
 		if src.Kind() == reflect.Struct && src.String() == "time.Time" && dest.Kind() == reflect.String {
 			if newIn, ok := in.(time.Time); ok {
-				return newIn.Format(TimeFmtDB), nil
+				return newIn.Format(time.RFC3339), nil
 			}
 		} else if src.Kind() == reflect.Ptr && src.String() == "*time.Time" && dest.Kind() == reflect.String {
 			if newIn, ok := in.(*time.Time); ok {
 				if newIn == nil {
-					return "1970-07-01 00:00:00", nil
+					return "1970-07-01T00:00:00+00:00", nil
 				}
-				return newIn.Format(TimeFmtDB), nil
+				return newIn.Format(time.RFC3339), nil
 			}
 		}
 		return in, nil
