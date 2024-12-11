@@ -76,6 +76,18 @@ type PatchInsert struct {
 	Model any
 }
 
+type GormWriter struct {
+}
+
+func (w *GormWriter) Write(p []byte) (n int, err error) {
+	if strings.Contains(string(p), "Error") {
+		C(p)
+	} else {
+		C2(Custom2, p)
+	}
+	return len(p), nil
+}
+
 type DBMgrBase struct {
 	DbInst    *sql.DB
 	GormDb    *gorm.DB
@@ -111,7 +123,7 @@ func (d *DBMgrBase) Init(ctx context.Context, maxDBCon int, config *gorm.Config,
 
 	if config == nil {
 		config = &gorm.Config{
-			Logger: logger.New(log.New(&LogWriter{}, "", 0), logger.Config{
+			Logger: logger.New(log.New(&GormWriter{}, "", 0), logger.Config{
 				SlowThreshold:             200 * time.Millisecond,
 				LogLevel:                  logger.Warn,
 				IgnoreRecordNotFoundError: false,

@@ -329,6 +329,10 @@ func C(p []byte) {
 	toLog(Custom, string(p))
 }
 
+func C2(lv logrus.Level, p []byte) {
+	toLog(lv, string(p))
+}
+
 type LogWriter struct {
 }
 
