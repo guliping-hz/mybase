@@ -81,9 +81,9 @@ type GormWriter struct {
 
 func (w *GormWriter) Write(p []byte) (n int, err error) {
 	if strings.Contains(string(p), "Error") {
-		C(p)
-	} else {
 		C2(Custom2, p)
+	} else {
+		C(p)
 	}
 	return len(p), nil
 }
