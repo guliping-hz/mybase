@@ -8,12 +8,26 @@ import (
 	"reflect"
 )
 
+func PackSeqData(cmd interface{}, seq int32, data proto.Message) *PackMsg {
+	bs, _ := proto.Marshal(data)
+	return &PackMsg{
+		Cmd:    int32(reflect.ValueOf(cmd).Int()),
+		Seq:    seq,
+		Binary: bs,
+	}
+}
+
 func PackData(cmd interface{}, data proto.Message) *PackMsg {
 	bs, _ := proto.Marshal(data)
 	return &PackMsg{
 		Cmd:    int32(reflect.ValueOf(cmd).Int()),
 		Binary: bs,
 	}
+}
+
+func PackSeqPackage(id interface{}, seq int32, data proto.Message) []byte {
+	content := PackSeqData(id, seq, data)
+	return PackProtoToPackage(content, int32(reflect.ValueOf(id).Int()))
 }
 
 func PackPackage(id interface{}, data proto.Message) []byte {
@@ -34,7 +48,7 @@ func PackContentToPackage(bufContent []byte) []byte {
 	return bufPackage //返回成功消息
 }
 
-func PackProtoToPackage(message proto.Message, cmd int32) []byte {
+func PackProtoToPackage(message proto.Message, cmdForLog int32) []byte {
 	buf, err := proto.Marshal(message)
 	if err != nil {
 		mybase.E("Marshal fail err=%s", err.Error())
@@ -43,7 +57,7 @@ func PackProtoToPackage(message proto.Message, cmd int32) []byte {
 
 	buf = PackContentToPackage(buf)
 	if buf == nil { //一个包最大长度不能超过65535-2
-		mybase.E("the buf is over 65535 cmd=%d", cmd)
+		mybase.E("the buf is over 65535 cmd=%d", cmdForLog)
 		return nil
 	}
 	return buf
