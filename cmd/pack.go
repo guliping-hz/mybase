@@ -8,6 +8,14 @@ import (
 	"reflect"
 )
 
+func PackSeqRet(cmd interface{}, seq, ret int32) *PackMsg {
+	return &PackMsg{
+		Cmd: int32(reflect.ValueOf(cmd).Int()),
+		Seq: seq,
+		Ret: ret,
+	}
+}
+
 func PackSeqData(cmd interface{}, seq int32, data proto.Message) *PackMsg {
 	bs, _ := proto.Marshal(data)
 	return &PackMsg{
@@ -23,6 +31,11 @@ func PackData(cmd interface{}, data proto.Message) *PackMsg {
 		Cmd:    int32(reflect.ValueOf(cmd).Int()),
 		Binary: bs,
 	}
+}
+
+func PackSeqRetPackage(id interface{}, seq, ret int32) []byte {
+	content := PackSeqRet(id, seq, ret)
+	return PackProtoToPackage(content, int32(reflect.ValueOf(id).Int()))
 }
 
 func PackSeqPackage(id interface{}, seq int32, data proto.Message) []byte {
