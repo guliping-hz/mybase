@@ -124,20 +124,18 @@ def build_go(
         os.environ["GOOS"] = platform
         os.environ["GOTRACEBACK"] = "all"
 
-        # my_print("srcDir")
-        commond = ["go", "build", "-C", srcDir, "-buildvcs=false"]
         if srcDir and srcDir != "":
-            commond.extend(["-o", f"{targetDir}/{targetName}"])
-            # commond = [
-            #     "go",
-            #     "build",
-            #     "-buildvcs",
-            #     "false",
-            #     "-C",
-            #     srcDir,
-            #     "-o",
-            #     f"{targetDir}/{targetName}",
-            # ]
+            # my_print("srcDir")
+            commond = [
+                "go",
+                "build",
+                "-buildvcs=false",
+                "-C",
+                srcDir,
+                "-o",
+                f"{targetDir}/{targetName}",
+            ]
+
             my_print(commond)
             subprocess.check_output(commond)
             my_print(f"Go program compiled successfully to {targetDir}/{targetName}")
@@ -146,21 +144,17 @@ def build_go(
             # my_print("srcFile")
             srcDir = os.path.dirname(srcFile)
             srcFileBase = os.path.basename(srcFile)
-            # commond = ["cd", srcDir]
-            # my_print(commond)
-            # subprocess.check_output(commond)
-            commond.extend(["-o", f"{targetDir}/{targetName}", srcFileBase])
-            # commond = [
-            #     "go",
-            #     "build",
-            #     "-buildvcs",
-            #     "false",
-            #     "-C",
-            #     srcDir,
-            #     "-o",
-            #     f"{targetDir}/{targetName}",
-            #     srcFileBase,
-            # ]
+
+            commond = [
+                "go",
+                "build",
+                # "-buildvcs=false",
+                "-C",
+                srcDir,
+                "-o",
+                f"{targetDir}/{targetName}",
+                srcFileBase,
+            ]
             my_print(commond)
             subprocess.check_output(commond)
             my_print(f"Go program compiled successfully to {targetDir}/{targetName}")
