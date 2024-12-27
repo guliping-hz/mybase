@@ -129,9 +129,9 @@ def build_go(
             commond = [
                 "go",
                 "build",
-                "-buildvcs=false",
                 "-C",
                 srcDir,
+                "-buildvcs=false",
                 "-o",
                 f"{targetDir}/{targetName}",
             ]
@@ -148,9 +148,9 @@ def build_go(
             commond = [
                 "go",
                 "build",
-                # "-buildvcs=false",
                 "-C",
                 srcDir,
+                "-buildvcs=false",
                 "-o",
                 f"{targetDir}/{targetName}",
                 srcFileBase,
