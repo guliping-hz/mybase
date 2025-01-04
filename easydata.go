@@ -23,27 +23,17 @@ func (e H) GetH(key string) (H, bool) {
 }
 
 func (e H) ForceInt64(key string) int64 {
-	dataI, ok := e.GetInterface(key)
-	if !ok {
-		return 0
-	}
-
-	rV := reflect.ValueOf(dataI)
-	rVKind := rV.Kind()
-	switch {
-	case rV.CanInt():
-		return rV.Int()
-	case rV.CanUint():
-		return int64(rV.Uint())
-	case rV.CanFloat():
-		return int64(rV.Float())
-	case rVKind == reflect.String:
-		vS, _ := e.GetString(key)
-		if ret, err := strconv.ParseInt(vS, 10, 64); err == nil {
-			return ret
+	if r, ok := e.GetInt64(key); !ok {
+		if dataI, ok1 := e.GetInterface(key); !ok1 {
+			return 0
+		} else {
+			rV := reflect.ValueOf(dataI)
+			rVKind := rV.Kind()
+			panic(fmt.Sprintf("%s can't convert to int64 kind:%s value:`%v`", key, rVKind.String(), dataI))
 		}
+	} else {
+		return r
 	}
-	panic(fmt.Sprintf("%s can't convert to int64 kind:%s value:`%v`", key, rVKind.String(), dataI))
 }
 
 func (e H) ForceString(key string) string {
@@ -74,19 +64,18 @@ func (e H) GetInt64(key string) (ret int64, ok bool) {
 
 	rV := reflect.ValueOf(dataI)
 	rVKind := rV.Kind()
-	if rVKind == reflect.Int || rVKind == reflect.Int8 || rVKind == reflect.Int16 ||
-		rVKind == reflect.Int32 || rVKind == reflect.Int64 {
+	switch {
+	case rV.CanInt():
 		return rV.Int(), true
-	} else if rVKind == reflect.String {
+	case rV.CanUint():
+		return int64(rV.Uint()), true
+	case rV.CanFloat():
+		return int64(rV.Float()), true
+	case rVKind == reflect.String:
 		vS, _ := e.GetString(key)
-		var err error
-		if ret, err = strconv.ParseInt(vS, 10, 64); err == nil {
+		if ret, err := strconv.ParseInt(vS, 10, 64); err == nil {
 			return ret, true
 		}
-	}
-	retF, ok := e.GetFloat64(key)
-	if ok {
-		return int64(retF), true
 	}
 	return 0, false
 }
