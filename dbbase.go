@@ -242,8 +242,18 @@ func (d *DBMgrBase) patchInsertAll(key string) {
 	defer d.patchSqlMutex.Unlock()
 
 	insertF := func(k string, v *PatchInsert) {
-		if !d.GormDb.Migrator().HasTable(k) {
-			d.GormDb.Table(k).Migrator().CreateTable(v.Model)
+		if strings.Contains(k, ".") {
+			schemeAndTableName := strings.Split(k, ".")
+			scheme := schemeAndTableName[0]
+			tableName := schemeAndTableName[1]
+			var cnt int64
+			if d.GormDb.Raw(`SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?`, scheme, tableName).Scan(&cnt); cnt == 0 {
+				d.GormDb.Table(k).Migrator().CreateTable(v.Model)
+			}
+		} else {
+			if !d.GormDb.Migrator().HasTable(k) {
+				d.GormDb.Table(k).Migrator().CreateTable(v.Model)
+			}
 		}
 
 		//panic报错  目前的Gorm不支持 []any  那么只能暂时先把log以 []map[string]any的形式存起来
