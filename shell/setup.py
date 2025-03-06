@@ -14,6 +14,7 @@ import urllib.request, ssl, http.cookiejar
 import json
 import select
 import socket
+from zipfile import ZipFile
 
 
 def change_line_end_from_win_to_linux(file: str):
@@ -703,6 +704,22 @@ class Setup(BaseSetup):
         # 最后上传EXE
         my_print("上传EXE,觉得慢可以直接终止!")
         exeFullPath = self.outDir + "/" + self.exe
+        zipName = self.exe + ".zip"
+        zipFullPath = self.outDir + "/" + zipName
+
+        # 完全没有压缩。。。
+        # # 压缩exe文件
+        # with ZipFile(zipFullPath, "w") as myzip:
+        #     myzip.write(exeFullPath, self.exe)  
+
+        # # 上传exe
+        # if not self.remote_put(zipFullPath, self.dir):  # + "/" + self.exe
+        #     return False
+
+        # # 解压exe
+        # if not self.remote_exec(f"cd {self.dir} && unzip -o {zipName}"):
+        #     return False
+
         if not self.remote_put(exeFullPath, self.dir):  # + "/" + self.exe
             return False
         return True
