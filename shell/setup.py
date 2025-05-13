@@ -664,6 +664,7 @@ class Setup(BaseSetup):
         self.exe = args and args.exe or "exe"
         self.screen = args and args.screen or ""
         self.outDir = args and args.out_dir or "."
+        self.upload_bin = args and args.upload_bin
 
         if args:
             self.buildDir = args.build_dir
@@ -688,8 +689,9 @@ class Setup(BaseSetup):
 
     def upload_pre(self) -> bool:
         # 编译代码
-        if not build_go(self.buildDir, self.buildFile, self.outDir, self.exe):
-            return False
+        if self.upload_bin:
+            if not build_go(self.buildDir, self.buildFile, self.outDir, self.exe):
+                return False
 
         # 创建服务器目录环境
         if not self.remote_exec(f"sudo mkdir -p {self.dir}"):
@@ -710,7 +712,7 @@ class Setup(BaseSetup):
         # 完全没有压缩。。。
         # # 压缩exe文件
         # with ZipFile(zipFullPath, "w") as myzip:
-        #     myzip.write(exeFullPath, self.exe)  
+        #     myzip.write(exeFullPath, self.exe)
 
         # # 上传exe
         # if not self.remote_put(zipFullPath, self.dir):  # + "/" + self.exe
@@ -738,12 +740,13 @@ class Setup(BaseSetup):
                 return False
 
         # # 重命名
-        # self.remote_exec(f"sudo cd {self.dir} && rm {self.exe}.bak")
-        self.remote_exec(f"sudo mkdir -p {self.dir}/back")
-        # self.remote_exec(f'sudo find {self.dir}/back -mtime +30 -type f -name "*.bak" -delete')
-        self.remote_exec(
-            f"sudo mv {self.dir}/{self.exe} {self.dir}/back/{self.exe}.{int(time.time())}.bak"
-        )
+        if self.upload_bin:
+            # self.remote_exec(f"sudo cd {self.dir} && rm {self.exe}.bak")
+            self.remote_exec(f"sudo mkdir -p {self.dir}/back")
+            # self.remote_exec(f'sudo find {self.dir}/back -mtime +30 -type f -name "*.bak" -delete')
+            self.remote_exec(
+                f"sudo mv {self.dir}/{self.exe} {self.dir}/back/{self.exe}.{int(time.time())}.bak"
+            )
 
         # 上传文件
         if self.shellOn:
@@ -845,9 +848,10 @@ class Setup(BaseSetup):
         if not self.copy_pre():
             return False
 
-        # 最后上传EXE
-        if not self.upload_after():
-            return False
+        if self.upload_bin:
+            # 最后上传EXE
+            if not self.upload_after():
+                return False
 
         return self.copy_after()
 
@@ -888,6 +892,12 @@ def parse_to_setup():
     parser.add_argument("-vpn_port", default=0, type=int, help="代理端口")
     parser.add_argument("-action", default="start", help="执行行为")
     parser.add_argument("-src", default="", help="拷贝执行的原二进制远程路径")
+    parser.add_argument(
+        "--upload_bin",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="是否上传二进制",
+    )
 
     args = parser.parse_args()
     my_print("parseArgs=", args)
