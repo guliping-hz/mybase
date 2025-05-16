@@ -183,6 +183,7 @@ def remote_exec(
     user: str = "root",
     socksHost: str = "localhost",
     socksPort: int = 0,
+    raiseError: bool = True,
 ) -> bool:
     sock = None
     if socksPort:
@@ -237,6 +238,9 @@ def remote_exec(
     finally:
         # 关闭SSH连接
         ssh_client.close()
+
+        if not ret and raiseError:
+            raise RuntimeError()
         return ret
 
 
@@ -249,6 +253,7 @@ def remote_put(
     user: str = "root",
     socksHost: str = "localhost",
     socksPort: int = 0,
+    raiseError: bool = True,
 ) -> bool:
     """
     :param socksHost 代理host
@@ -314,6 +319,9 @@ def remote_put(
     finally:
         # 关闭SSH连接
         ssh_client.close()
+
+        if not ret and raiseError:
+            raise RuntimeError()
         return ret
 
 
