@@ -712,8 +712,8 @@ class Setup(BaseSetup):
 
     def upload_after(self) -> bool:
         # 最后上传EXE
-        my_print("上传EXE,觉得慢可以直接终止!")
         exeFullPath = self.outDir + "/" + self.exe
+        my_print(f"上传EXE,觉得慢可以直接终止! ip:{self.ip} exe:{exeFullPath}")
         zipName = self.exe + ".zip"
         zipFullPath = self.outDir + "/" + zipName
 
