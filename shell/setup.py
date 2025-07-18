@@ -110,6 +110,7 @@ def build_go(
     srcFile: str | None,
     targetDir: str,
     targetName: str,
+    buildvcs: bool = False,
     platform: str = "linux",
 ) -> bool:
     """
@@ -127,15 +128,15 @@ def build_go(
 
         if srcDir and srcDir != "":
             # my_print("srcDir")
-            commond = [
-                "go",
-                "build",
-                "-C",
-                srcDir,
-                "-buildvcs=false",
-                "-o",
-                f"{targetDir}/{targetName}",
-            ]
+            commond = ["go", "build", "-C", srcDir]
+            if not buildvcs:
+                commond.append("-buildvcs=false")
+            commond.extend(
+                [
+                    "-o",
+                    f"{targetDir}/{targetName}",
+                ]
+            )
 
             my_print(commond)
             subprocess.check_output(commond)
@@ -146,16 +147,16 @@ def build_go(
             srcDir = os.path.dirname(srcFile)
             srcFileBase = os.path.basename(srcFile)
 
-            commond = [
-                "go",
-                "build",
-                "-C",
-                srcDir,
-                "-buildvcs=false",
-                "-o",
-                f"{targetDir}/{targetName}",
-                srcFileBase,
-            ]
+            commond = ["go", "build", "-C", srcDir]
+            if not buildvcs:
+                commond.append("-buildvcs=false")
+            commond.extend(
+                [
+                    "-o",
+                    f"{targetDir}/{targetName}",
+                    srcFileBase,
+                ]
+            )
             my_print(commond)
             subprocess.check_output(commond)
             my_print(f"Go program compiled successfully to {targetDir}/{targetName}")
@@ -164,12 +165,17 @@ def build_go(
             my_print(f"Go program compiled failed not set build dir or file")
             ret = False
     except subprocess.CalledProcessError as e:
-        my_print("Error compiling Go program:", e)
+        my_print("subprocess.CalledProcessError compiling Go program:", e)
+    except Exception as e:
+        my_print("Exception compiling Go program:", e)
     finally:
         my_print(f"end compiling Go program: {ret}")
-        del os.environ["GOARCH"]
-        del os.environ["GOOS"]
-        del os.environ["GOTRACEBACK"]
+        if "GOARCH" in os.environ:
+            del os.environ["GOARCH"]
+        if "GOOS" in os.environ:
+            del os.environ["GOOS"]
+        if "GOTRACEBACK" in os.environ:
+            del os.environ["GOTRACEBACK"]
 
         if not ret:
             os._exit(1)
@@ -673,6 +679,7 @@ class Setup(BaseSetup):
         self.screen = args and args.screen or ""
         self.outDir = args and args.out_dir or "."
         self.upload_bin = args and args.upload_bin
+        self.buildvcs = args and args.buildvcs or False
 
         if args:
             self.buildDir = args.build_dir
@@ -698,7 +705,13 @@ class Setup(BaseSetup):
     def upload_pre(self) -> bool:
         # 编译代码
         if self.upload_bin:
-            if not build_go(self.buildDir, self.buildFile, self.outDir, self.exe):
+            if not build_go(
+                self.buildDir,
+                self.buildFile,
+                self.outDir,
+                self.exe,
+                self.buildvcs,
+            ):
                 return False
 
         # 创建服务器目录环境
@@ -905,6 +918,12 @@ def parse_to_setup():
         action=argparse.BooleanOptionalAction,
         default=True,
         help="是否上传二进制",
+    )
+    parser.add_argument(
+        "--buildvcs",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="是否buildvcs",
     )
 
     args = parser.parse_args()
