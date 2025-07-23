@@ -89,7 +89,7 @@ type IdCreateS4 struct {
 
 type CoinLog struct {
 	IdCreateS4
-	Uid  int64      `gorm:"type:bigint;comment:UID" json:"uid"`
+	Uid  int64      `gorm:"type:bigint;comment:UID" json:"uid,omitempty"`
 	Coin int64      `gorm:"type:bigint;comment:金币" json:"coin"`
 	Tm   *time.Time `gorm:"type:datetime;comment:时间" json:"tm"`
 }
