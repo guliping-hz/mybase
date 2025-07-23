@@ -316,7 +316,7 @@ func (d *DBMgrBase) CreateLimit(log any, limit int) (tx *gorm.DB) {
 					if name == "" || name == "-" {
 						continue
 					}
-					
+
 					name = strings.TrimSpace(strings.Split(name, ",")[0])
 					if name == "created_at" && rValField.IsZero() {
 						newV[name] = time.Now()
