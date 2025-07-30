@@ -307,10 +307,10 @@ def remote_put(
             percent = sent / size * 100
             figure = "*" * math.floor(percent / 5)
             if filename == curFileName:
-                my_print(f"\rUploading {filename} {figure} {percent:.2f}%", end="")
+                my_print(f"\rUploading {ip} {filename} {figure} {percent:.2f}%", end="")
             else:
                 curFileName = filename
-                my_print(f"\nUploading {filename} {figure} {percent:.2f}%", end="")
+                my_print(f"\nUploading {ip} {filename} {figure} {percent:.2f}%", end="")
 
         # # 使用scp模块上传文件到远程服务器
         with SCPClient(ssh_client.get_transport(), progress=progress) as scp:
