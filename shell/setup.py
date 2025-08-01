@@ -780,7 +780,8 @@ class Setup(BaseSetup):
             ]
             for i in range(len(shells)):
                 nowShellName = shells[i]["name"]
-                thePath = f"{self.outDir}/{super.ip}.{time.time()}.{nowShellName}"
+                thePath = f"{self.outDir}/{self.ip}.{time.time()}.{nowShellName}"
+                print(f"thePath:{thePath}")
                 with open(thePath, "wb") as f:
                     f.write(shells[i]["content"].encode("utf8"))
                 if not self.remote_put(
