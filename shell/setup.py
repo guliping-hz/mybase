@@ -678,6 +678,7 @@ class Setup(BaseSetup):
         self.exe = args and args.exe or "exe"
         self.screen = args and args.screen or ""
         self.outDir = args and args.out_dir or "."
+        self.build_bin = args and args.build_bin
         self.upload_bin = args and args.upload_bin
         self.buildvcs = args and args.buildvcs or False
 
@@ -704,7 +705,7 @@ class Setup(BaseSetup):
 
     def upload_pre(self) -> bool:
         # 编译代码
-        if self.upload_bin:
+        if self.build_bin:
             if not build_go(
                 self.buildDir,
                 self.buildFile,
@@ -917,6 +918,12 @@ def parse_to_setup():
     parser.add_argument("-vpn_port", default=0, type=int, help="代理端口")
     parser.add_argument("-action", default="start", help="执行行为")
     parser.add_argument("-src", default="", help="拷贝执行的原二进制远程路径")
+    parser.add_argument(
+        "--build_bin",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="是否上传二进制",
+    )
     parser.add_argument(
         "--upload_bin",
         action=argparse.BooleanOptionalAction,
