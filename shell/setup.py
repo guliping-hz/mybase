@@ -779,10 +779,13 @@ class Setup(BaseSetup):
                 {"name": "screen.sh", "content": BaseSetup.get_screen()},
             ]
             for i in range(len(shells)):
-                thePath = f'{self.outDir}/{shells[i]["name"]}'
+                nowShellName = shells[i]["name"]
+                thePath = f"{self.outDir}/{super.ip}.{time.time()}.{nowShellName}"
                 with open(thePath, "wb") as f:
                     f.write(shells[i]["content"].encode("utf8"))
-                if not self.remote_put(thePath, self.dir):  # + "/" + shells[i]
+                if not self.remote_put(
+                    thePath, f"{self.dir}/{nowShellName}"
+                ):  # + "/" + shells[i]
                     return False
                 os.remove(thePath)
 
