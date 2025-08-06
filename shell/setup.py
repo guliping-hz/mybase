@@ -246,7 +246,7 @@ def remote_exec(
         ssh_client.close()
 
         if not ret and raiseError:
-            raise RuntimeError()
+            raise RuntimeError(f"ip:{ip} fail {command}")
         return ret
 
 
@@ -327,7 +327,7 @@ def remote_put(
         ssh_client.close()
 
         if not ret and raiseError:
-            raise RuntimeError()
+            raise RuntimeError(f"ip:{ip} fail {src} => {dest}")
         return ret
 
 
