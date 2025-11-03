@@ -1,0 +1,35 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "python",
+            "name": "Python: Current File",
+            "request": "launch",
+            "program": "${file}",
+            //"args": ["mysql"],
+            "console": "integratedTerminal",
+            // "justMyCode": true,
+            "cwd": "${fileDirname}"
+        },
+        {
+            "type": "node", //指定执行exe名字
+            "name": "JavaScript: Current File",//配置名称
+            "request": "launch", //
+            "program": "${file}", //指定执行文件
+            "console": "integratedTerminal", //交互控制台
+            // "justMyCode": true,
+            "cwd": "${fileDirname}" //当前目录
+        },
+        {
+            "type": "node", //指定执行exe名字 
+            "name": "TypeScript: Current File",//配置名称 还有点问题。。
+            "request": "launch", //
+            "runtimeArgs": ["-r", "ts-node/register"],
+            "args": "${file}", //指定执行文件
+            "console": "integratedTerminal", //交互控制台
+            // "justMyCode": true,
+            "program": "${file}",
+            "cwd": "${fileDirname}" //当前目录
+        }
+    ]
+}
