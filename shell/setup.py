@@ -550,7 +550,7 @@ class BtApi:
         self.save_file_body("mysql", data, "/etc/my.cnf")
 
     def set_db_file_default(self):
-        data = sshHelper.get_db_file()
+        data = self.get_db_file()
         if data["status"]:
             mysqlConfFile = data["data"]
             # 连接数增加,开启事件
@@ -563,7 +563,8 @@ class BtApi:
                 "sql-mode=NO_ENGINE_SUBSTITUTION,STRICT_TRANS_TABLES",
                 "sql-mode=ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION",
             )
-            sshHelper.set_db_file(mysqlConfFile)
+            self.set_db_file(mysqlConfFile)
+            self.server_admin("mysqld", "restart")
 
     def get_redis_file(self):
         return self.get_file_body_by_path("/www/server/redis/redis.conf")
@@ -571,8 +572,17 @@ class BtApi:
     def set_redis_file(self, data):
         self.save_file_body("redis", data, "/www/server/redis/redis.conf")
 
+    def server_admin(self, name, type):
+        url = self.__BT_PANEL + "/system?action=ServiceAdmin"
+        param = self.__get_key_data()  # 取签名
+        param["path"] = path
+        result = http_with_cookie(url, param, 1800)
+        if result:
+            return json.loads(result)
+        return None
+
     def change_redis_pwd(self, newPwd, oldPwd=None):
-        data = sshHelper.get_redis_file()
+        data = self.get_redis_file()
         if data["status"]:
             redisConfFile = data["data"]
             redisConfFile = redisConfFile.replace(
@@ -584,7 +594,8 @@ class BtApi:
                     f"requirepass {oldPwd}",
                     f"requirepass {newPwd}",
                 )
-            sshHelper.set_redis_file(redisConfFile)
+            self.set_redis_file(redisConfFile)
+            self.server_admin("redis", "restart")
 
     # 构造带有签名的关联数组
     def __get_key_data(self):
