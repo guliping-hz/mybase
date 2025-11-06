@@ -597,6 +597,22 @@ class BtApi:
             self.set_redis_file(redisConfFile)
             self.server_admin("redis", "restart")
 
+    def install_soft(self, name, version, type):
+        url = self.__BT_PANEL + "/files?action=InstallSoft"
+        param = self.__get_key_data()  # 取签名
+        param["name"] = name
+        param["version"] = name
+        param["type"] = name
+        result = http_with_cookie(url, param, 1800)
+        if result:
+            return json.loads(result)
+        return None
+
+    def install_php_soft(phpVer):
+        self.install_soft("redis", phpVer, 1)
+        self.install_soft("mcrypt", phpVer, 1)
+        self.install_soft("yaf", phpVer, 1)
+
     # 构造带有签名的关联数组
     def __get_key_data(self):
         now_time = int(time.time())
