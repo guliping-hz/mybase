@@ -1,6 +1,7 @@
 package mybase
 
 import (
+	"math"
 	"sync"
 	"time"
 )
@@ -22,6 +23,10 @@ func (m *MyRand) Uint32() uint32 {
 
 	m.seed = (48271*m.seed + 1) % uint64(1<<31-1)
 	return uint32(m.seed)
+}
+
+func (m *MyRand) Int63() int64 {
+	return int64(math.Floor(m.Float64() * float64(1<<63-1)))
 }
 
 func (m *MyRand) Int31() int32 {
