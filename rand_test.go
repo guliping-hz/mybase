@@ -2,9 +2,18 @@ package mybase
 
 import (
 	"fmt"
+	"math/rand"
 	"os"
 	"testing"
 )
+
+func TestFloat(t *testing.T) {
+	myR := NewMyRand()
+	for i := 0; i < 100; i++ {
+		a, b := myR.Float32(), rand.Float32()
+		t.Log(a, b)
+	}
+}
 
 func TestRandInt(t *testing.T) {
 	myRand := NewMyRand()
@@ -17,6 +26,7 @@ func TestRandInt(t *testing.T) {
 			t.Log("scan", i)
 		}
 		rnd := myRand.Intn(n)
+		//rnd := rand.Intn(n)
 		m[rnd]++
 	}
 
