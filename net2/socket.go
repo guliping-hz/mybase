@@ -19,8 +19,8 @@ func CheckTimeout(err error) bool {
 // *********ClientSocket
 type ClientSocket struct {
 	ClientBase
-	conn      net.Conn
-	sessionId uint64
+	conn net.Conn
+	//sessionId uint64
 }
 
 func (c *ClientSocket) Close() error {
