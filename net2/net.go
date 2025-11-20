@@ -56,6 +56,9 @@ type Conn interface {
 
 	//唯一ID，多个服务器的话可能 SessionId会一样，但是UnionId肯定不一样
 	UnionId() string
+
+	//根据指定key获取到对应的数据
+	Value(key string) any
 }
 
 // net2内部封装接口，不对外开放
@@ -110,7 +113,7 @@ type DataDecodeBase interface {
 }
 
 type ClientBase struct {
-	context *Context
+	Context *Context
 	Status  Status
 
 	chanStop   chan struct{}
@@ -139,21 +142,25 @@ func (c *ClientBase) UnionId() string {
 	return c.UnionIdStr
 }
 
+func (c *ClientBase) Value(key string) any {
+	return c.Context.Value(key)
+}
+
 func (c *ClientBase) Init(ddb DataDecodeBase, ttl, rTtl time.Duration, onSocket OnSocket, con Conn, socket iSocket) {
 	//关闭可能已开启的。
 	c.Shutdown()
 
-	c.context = &Context{}
-	c.context.readDB = &bytes.Buffer{}
-	c.context.dataDecoder = ddb
-	if c.context.dataDecoder == nil {
-		c.context.dataDecoder = new(DataDecodeBinaryBigEnd)
+	c.Context = &Context{}
+	c.Context.readDB = &bytes.Buffer{}
+	c.Context.dataDecoder = ddb
+	if c.Context.dataDecoder == nil {
+		c.Context.dataDecoder = new(DataDecodeBinaryBigEnd)
 	}
-	c.context.ttl = ttl
-	c.context.rTtl = rTtl
-	c.context.OnSocket = onSocket
-	c.context.Con = con
-	c.context.socket = socket
+	c.Context.ttl = ttl
+	c.Context.rTtl = rTtl
+	c.Context.OnSocket = onSocket
+	c.Context.Con = con
+	c.Context.socket = socket
 }
 
 func (c *ClientBase) Shutdown() {
@@ -211,7 +218,7 @@ func (c *ClientBase) safeClose(byLocalNotRemote bool, waitOnlyMe bool) {
 	}
 
 	c.Status.ChangeStatus(StatusShutdown, nil)
-	err := c.context.socket.Close()
+	err := c.Context.socket.Close()
 	if err != nil {
 		//mybase.E("Close error=%v", err.Error())
 	}
@@ -223,7 +230,7 @@ func (c *ClientBase) safeClose(byLocalNotRemote bool, waitOnlyMe bool) {
 	//mybase.D("SafeClose closed %d", atomic.LoadInt32(&c.isConnected))
 
 	c.safeSendOnClose(byLocalNotRemote) //如果需要回调，我们就回调一下。
-	c.context.readDB.Reset()            //清空已读的buffer
+	c.Context.readDB.Reset()            //清空已读的buffer
 
 	//标记已经关闭完成
 	atomic.StoreInt32(&c.WaitClose, 2)
@@ -256,17 +263,17 @@ func (c *ClientBase) Send(buf []byte) bool {
 //	}
 //	c.ConnectedRef = 0
 //
-//	c.context.once.Do(func() { //这里会死锁。。 客户端断开->对等断开->再回到客户端断开,导致死锁
+//	c.Context.once.Do(func() { //这里会死锁。。 客户端断开->对等断开->再回到客户端断开,导致死锁
 //		//mybase.I("SafeClose 2 %d", c.SessionId())
 //		c.Status.ChangeStatus(StatusShutdown, nil)
-//		err := c.context.socket.Close()
+//		err := c.Context.socket.Close()
 //		if err != nil {
 //			mybase.E("Close error=%v", err.Error())
 //		}
 //
-//		close(c.context.chanStop)
+//		close(c.Context.chanStop)
 //		c.safeSendOnClose(bySelf) //如果需要回调，我们就回调一下。
-//		c.context.readDB.Reset()  //清空已读的buffer
+//		c.Context.readDB.Reset()  //清空已读的buffer
 //	})
 //	//mybase.I("SafeClose 3 %d", c.SessionId())
 //}
@@ -274,7 +281,7 @@ func (c *ClientBase) Send(buf []byte) bool {
 //实验二： Send实现
 //func (c *ClientBase) Send(buf []byte) bool {
 //	select { //即使是这样，在极端情况下也会发生panic send on closed
-//	case <-c.context.Done():
+//	case <-c.Context.Done():
 //		return false
 //	default:
 //		c.chanSendDB <- buf
@@ -285,12 +292,12 @@ func (c *ClientBase) Send(buf []byte) bool {
 //实验一： Send实现
 //func (c *ClientBase) Send(buf []byte) bool {
 //	select {
-//	case <-c.context.Done():
+//	case <-c.Context.Done():
 //		return false
 //	default:
 //		//直接发送的话，在websocket中会崩溃 concurrent write to websocket connection
 //		//ws 要求必须顺序写入buf
-//		c.context.socket.SendEx(buf)
+//		c.Context.socket.SendEx(buf)
 //		return true
 //	}
 //}
@@ -302,17 +309,17 @@ func (c *ClientBase) IsClosedByPeer() bool {
 func (c *ClientBase) CloseWithErr(err error, stack []byte, check bool) {
 	ret := c.Status.ChangeStatusAll(StatusError, err, stack)
 	if (check && ret) || !check {
-		c.context.OnSocket.OnNetErr(c.context.Con)
+		c.Context.OnSocket.OnNetErr(c.Context.Con)
 		//把发生错误的socket及时关闭
-		c.context.Con.SafeClose(false)
+		c.Context.Con.SafeClose(false)
 	}
 }
 
 func (c *ClientBase) CloseTimeout() {
 	c.Status.ChangeStatus(StatusTimeout, nil)
-	c.context.OnSocket.OnTimeout(c.context.Con)
+	c.Context.OnSocket.OnTimeout(c.Context.Con)
 	//把发生错误的socket及时关闭
-	c.context.Con.SafeClose(false)
+	c.Context.Con.SafeClose(false)
 }
 
 func (c *ClientBase) safeSendOnClose(byLocalNotRemote bool) {
@@ -321,7 +328,7 @@ func (c *ClientBase) safeSendOnClose(byLocalNotRemote bool) {
 	}()
 
 	//通知关闭，这里增加一个recover，防止崩溃
-	c.context.OnSocket.OnClose(c.context.Con, byLocalNotRemote) //如果需要回调，我们就回调一下。
+	c.Context.OnSocket.OnClose(c.Context.Con, byLocalNotRemote) //如果需要回调，我们就回调一下。
 }
 
 func (c *ClientBase) Reactor() {
@@ -338,9 +345,9 @@ func (c *ClientBase) Reactor() {
 
 	//go c.sendRoutine() //发送协程：按顺序统一发送buff
 	//c.context这个成员变量赋新值的时候不会影响之前goroutine的环境
-	go sendRoutine(c.context, c.chanStop, c.chanSendDB)
+	go sendRoutine(c.Context, c.chanStop, c.chanSendDB)
 	//接收协程:按顺序统一接收buff
-	go recvRoutine(c.context, c.CloseWithErr, c.CloseTimeout)
+	go recvRoutine(c.Context, c.CloseWithErr, c.CloseTimeout)
 
 	//最后标记状态。
 	atomic.StoreInt32(&c.WaitClose, 0)
@@ -363,7 +370,7 @@ func sendRoutine(ctx *Context, chanStop <-chan struct{}, chanSendDB <-chan []byt
 		select {
 		case buf := <-chanSendDB:
 			//fmt.Printf("session=%d sendRoutine 1\n", c.SessionId())
-			//if c.context.socket != nil {
+			//if c.Context.socket != nil {
 			//如果client本身再运行中，这时候重新Init可能会导致socket为nil，所以在Init中加了判断，先正常关闭后再用。
 			ctx.socket.sendEx(buf)
 			//}

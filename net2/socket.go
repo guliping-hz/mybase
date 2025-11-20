@@ -39,7 +39,7 @@ func (c *ClientSocket) RemoteAddr() net.Addr {
 
 func (c *ClientSocket) sendEx(buffer []byte) {
 	//写超时必有
-	err := c.conn.SetWriteDeadline(time.Now().Add(c.context.ttl))
+	err := c.conn.SetWriteDeadline(time.Now().Add(c.Context.ttl))
 	if err != nil {
 		c.CloseWithErr(err, nil, true)
 		return
@@ -58,8 +58,8 @@ func (c *ClientSocket) sendEx(buffer []byte) {
 }
 
 func (c *ClientSocket) recvEx() ([]byte, error) {
-	if c.context.rTtl != 0 { //如果需要判断读超时。
-		err := c.conn.SetReadDeadline(time.Now().Add(c.context.rTtl))
+	if c.Context.rTtl != 0 { //如果需要判断读超时。
+		err := c.conn.SetReadDeadline(time.Now().Add(c.Context.rTtl))
 		if err != nil {
 			return nil, err
 		}
@@ -95,7 +95,7 @@ func (c *ClientSocket) Connect(addr string, ttl time.Duration, OnSocket OnSocket
 }
 
 func (c *ClientSocket) ReConnect(addr string) error {
-	conn, err := net.DialTimeout("tcp", addr, c.context.ttl)
+	conn, err := net.DialTimeout("tcp", addr, c.Context.ttl)
 	if err != nil {
 		if CheckTimeout(err) {
 			return ErrTimeout
