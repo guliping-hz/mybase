@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"github.com/bytedance/sonic"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 	"os"
 	"reflect"
@@ -87,11 +88,17 @@ type IdCreateS4 struct {
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at"` // 删除时间
 }
 
+type Room struct {
+	Rid int32 `json:"rid"`
+}
+
 type CoinLog struct {
 	IdCreateS4
-	Uid  int64      `gorm:"type:bigint;comment:UID" json:"uid,omitempty"`
-	Coin int64      `gorm:"type:bigint;comment:金币" json:"coin"`
-	Tm   *time.Time `gorm:"type:datetime;comment:时间" json:"tm"`
+	Uid     int64                     `gorm:"type:bigint;comment:UID" json:"uid,omitempty"`
+	Coin    int64                     `gorm:"type:bigint;comment:金币" json:"coin"`
+	Tm      *time.Time                `gorm:"type:datetime;comment:时间" json:"tm"`
+	Detail  datatypes.JSONType[*Room] `gorm:"type:json;comment:明细1" json:"detail" form:"detail"`
+	Detail2 datatypes.JSON            `gorm:"type:json;comment:明细2" json:"detail2" form:"detail2"`
 }
 
 func (c *CoinLog) TableName() string {
@@ -127,10 +134,16 @@ func TestPatchCreate(t *testing.T) {
 		return tm2
 	}
 
+	room := &Room{
+		Rid: 2,
+	}
+	buf, _ := sonic.Marshal(room)
 	t1, t2, t3, t4 := &CoinLog{
 		IdCreateS4: IdCreateS4{CreatedAt: getTm("2024-09-04T23:50:05+08:00")},
 		Uid:        1,
 		Coin:       20000,
+		Detail:     datatypes.NewJSONType(room),
+		Detail2:    buf,
 	}, &CoinLog{
 		IdCreateS4: IdCreateS4{CreatedAt: getTm("2024-09-04T23:52:05+08:00")},
 		Uid:        1,
@@ -157,7 +170,7 @@ func TestPatchCreate(t *testing.T) {
 	imp.Create(t2)
 	imp.Create(t3)
 	imp.Create(t4)
-	//imp.patchInsertAll("")
+	imp.patchInsertAll("")
 
 	time.Sleep(time.Second * 600)
 

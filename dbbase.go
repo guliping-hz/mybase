@@ -307,24 +307,24 @@ func (d *DBMgrBase) CreateLimit(log any, limit int) (tx *gorm.DB) {
 					}
 				}
 
-				if rValType != nil && rValType.Kind() == reflect.Struct && rValType.String() != "time.Time" {
-					//时间结构不解析
-					searchF(rValField)
-				} else {
-					rTypeField := rT.Field(i)
-					name := rTypeField.Tag.Get("json")
-					if name == "" || name == "-" {
-						continue
+				rTypeField := rT.Field(i)
+				name := rTypeField.Tag.Get("json")
+				if name == "" {
+					if rValType != nil && rValType.Kind() == reflect.Struct {
+						searchF(rValField)
 					}
+					continue
+				} else if name == "-" {
+					continue
+				}
 
-					name = strings.TrimSpace(strings.Split(name, ",")[0])
-					if name == "created_at" && rValField.IsZero() {
-						newV[name] = time.Now()
-					} else if name == "updated_at" {
-						newV[name] = time.Now()
-					} else {
-						newV[name] = rValField.Interface()
-					}
+				name = strings.TrimSpace(strings.Split(name, ",")[0])
+				if name == "created_at" && rValField.IsZero() {
+					newV[name] = time.Now()
+				} else if name == "updated_at" {
+					newV[name] = time.Now()
+				} else {
+					newV[name] = rValField.Interface()
 				}
 			}
 		}
