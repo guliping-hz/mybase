@@ -575,7 +575,7 @@ class BtApi:
     def server_admin(self, name, type):
         url = self.__BT_PANEL + "/system?action=ServiceAdmin"
         param = self.__get_key_data()  # 取签名
-        param["path"] = path
+        param["type"] = type
         result = http_with_cookie(url, param, 1800)
         if result:
             return json.loads(result)
@@ -608,7 +608,7 @@ class BtApi:
             return json.loads(result)
         return None
 
-    def install_php_soft(phpVer):
+    def install_php_soft(self, phpVer):
         self.install_soft("redis", phpVer, 1)
         self.install_soft("mcrypt", phpVer, 1)
         self.install_soft("yaf", phpVer, 1)
