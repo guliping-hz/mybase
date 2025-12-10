@@ -872,7 +872,7 @@ class Setup(BaseSetup):
 
         for i in range(0, len(self.envs), 3):
             here, there, isDir = self.envs[i], self.envs[i + 1], self.envs[i + 2] == "1"
-            if isDir and not self.remote_exec(f"rm -rf {self.dir + "/" + there}"):
+            if isDir and not self.remote_exec(f"rm -rf {self.dir}/{there}"):
                 return False
             if not self.remote_put(here, self.dir + "/" + there, isDir):
                 return False
