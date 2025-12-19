@@ -85,11 +85,11 @@ def check_and_install_dependency(p_import: str, package: str | None = None):
     except ImportError:
         print(f"{package} is not installed. Installing...")
         try:
-            # 升级pip
+            # 升级pip 要求是python3
             subprocess.check_call(
-                ["python3", "-m", "pip", "install", "--upgrade", "pip"]
+                ["python", "-m", "pip", "install", "--upgrade", "pip"]
             )
-            subprocess.check_call(["pip3", "install", package])
+            subprocess.check_call(["pip", "install", package])
             print(f"{package} has been installed.")
         except subprocess.CalledProcessError:
             print(f"install {package} fail,exit...")
