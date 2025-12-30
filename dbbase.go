@@ -258,7 +258,7 @@ func (d *DBMgrBase) patchInsertAll(key string) {
 
 		//panic报错  目前的Gorm不支持 []any  那么只能暂时先把log以 []map[string]any的形式存起来
 		if tx := d.GormDb.Table(k).Model(v.Model).Create(v.Logs); tx.Error != nil {
-			E("patchInsertAll key:%s err:%s", key, tx.Error.Error())
+			//W("patchInsertAll key:%s err:%s", key, tx.Error.Error())
 		}
 		delete(d.patchSqlDict, k)
 	}
