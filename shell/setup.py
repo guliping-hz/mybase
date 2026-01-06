@@ -575,6 +575,7 @@ class BtApi:
     def server_admin(self, name, type):
         url = self.__BT_PANEL + "/system?action=ServiceAdmin"
         param = self.__get_key_data()  # 取签名
+        param["name"] = name
         param["type"] = type
         result = http_with_cookie(url, param, 1800)
         if result:
