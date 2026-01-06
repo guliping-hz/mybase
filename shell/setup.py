@@ -602,8 +602,8 @@ class BtApi:
         url = self.__BT_PANEL + "/files?action=InstallSoft"
         param = self.__get_key_data()  # 取签名
         param["name"] = name
-        param["version"] = name
-        param["type"] = name
+        param["version"] = version
+        param["type"] = type
         result = http_with_cookie(url, param, 1800)
         if result:
             return json.loads(result)
