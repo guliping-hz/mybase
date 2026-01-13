@@ -582,6 +582,15 @@ class BtApi:
             return json.loads(result)
         return None
 
+    def set_status(self, status):
+        url = self.__BT_PANEL + "/firewall/com/set_status"
+        param = self.__get_key_data()  # 取签名
+        param["status"] = status
+        result = http_with_cookie(url, param, 1800)
+        if result:
+            return json.loads(result)
+        return None
+
     def change_redis_pwd(self, newPwd, oldPwd=None):
         data = self.get_redis_file()
         if data["status"]:
