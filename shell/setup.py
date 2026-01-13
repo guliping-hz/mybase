@@ -1009,7 +1009,7 @@ def parse_to_setup():
         "--build_bin",
         action=argparse.BooleanOptionalAction,
         default=True,
-        help="是否上传二进制",
+        help="是否编译二进制",
     )
     parser.add_argument(
         "--upload_bin",
