@@ -563,6 +563,12 @@ class BtApi:
                 "sql-mode=NO_ENGINE_SUBSTITUTION,STRICT_TRANS_TABLES",
                 "sql-mode=ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION",
             )
+
+            # 调整 expire_logs_days
+            mysqlConfFile = mysqlConfFile.replace(
+                "expire_logs_days = 10",
+                "expire_logs_days = 3",
+            )
             self.set_db_file(mysqlConfFile)
             self.server_admin("mysqld", "restart")
 
