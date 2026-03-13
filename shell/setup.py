@@ -190,7 +190,8 @@ def remote_exec(
     socksHost: str = "localhost",
     socksPort: int = 0,
     raiseError: bool = True,
-) -> bool:
+    needOut: bool = False,
+) -> tuple[bool, str]:
     sock = None
     if socksPort:
         # print(f"use socks {socksHost}:{socksPort}")
@@ -205,6 +206,7 @@ def remote_exec(
     ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
     ret = False
+    content = ""
     try:
         # 连接到远程服务器
         ssh_client.connect(ip, port, user, sock=sock)
@@ -220,11 +222,17 @@ def remote_exec(
             # 读取标准输出
             output = stdout.readline()
             if output:
-                print(output.strip())
+                if needOut:
+                    content += output
+                else:
+                    print(output.strip())
         # 读取剩余的标准输出
         remaining_output = stdout.read().decode()
         if remaining_output:
-            print(remaining_output.strip())
+            if needOut:
+                content += remaining_output
+            else:
+                print(remaining_output.strip())
 
         # # 读取标准错误
         error = stderr.read().decode()
@@ -247,7 +255,7 @@ def remote_exec(
 
         if not ret and raiseError:
             raise RuntimeError(f"ip:{ip} fail {command}")
-        return ret
+        return (ret, content)
 
 
 def remote_put(
@@ -659,7 +667,11 @@ class BaseSetup:
             print(f"use socks {self.socksHost}:{self.socksPort}")
 
     def remote_exec(self, commond: str) -> bool:
-        return remote_exec(self.ip, commond, self.port, self.user)
+        ret, _ = remote_exec(self.ip, commond, self.port, self.user)
+        return ret
+
+    def remote_get(self, commond: str) -> tuple[bool, str]:
+        return remote_exec(self.ip, commond, self.port, self.user, needOut=True)
 
     def remote_put(self, src: str, dest: str, isDir: bool = False) -> bool:
         return remote_put(
