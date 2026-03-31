@@ -637,6 +637,49 @@ class BtApi:
         self.install_soft("mcrypt", phpVer, 1)
         self.install_soft("yaf", phpVer, 1)
 
+    def set_sender_conf(self, sendType, sendData):
+        url = self.__BT_PANEL + "/mod/push/msgconf/set_sender_conf"
+        param = self.__get_key_data()  # 取签名
+        param["sender_type"] = sendType
+        param["sender_data"] = sendData
+        result = http_with_cookie(url, param, 1800)
+        if result:
+            return json.loads(result)
+        return None
+
+    def get_sender_list(self, refresh):
+        url = self.__BT_PANEL + "/mod/push/msgconf/get_sender_list"
+        param = self.__get_key_data()  # 取签名
+        param["refresh"] = refresh
+        result = http_with_cookie(url, param, 1800)
+        if result:
+            return json.loads(result)
+        return None
+
+    def set_task_conf(self, templateId, taskData, taskId=None):
+        url = self.__BT_PANEL + "/mod/push/task/set_task_conf"
+        param = self.__get_key_data()  # 取签名
+        param["template_id"] = templateId
+        param["task_data"] = taskData
+        if taskId:
+            param["task_id"] = taskId
+        result = http_with_cookie(url, param, 1800)
+        if result:
+            return json.loads(result)
+        return None
+
+    def get_task_list(self, p, rows, status="", keyword=""):
+        url = self.__BT_PANEL + "/mod/push/task/get_task_list"
+        param = self.__get_key_data()  # 取签名
+        param["p"] = p
+        param["rows"] = rows
+        param["status"] = status
+        param["keyword"] = keyword
+        result = http_with_cookie(url, param, 1800)
+        if result:
+            return json.loads(result)
+        return None
+
     # 构造带有签名的关联数组
     def __get_key_data(self):
         now_time = int(time.time())
