@@ -204,32 +204,36 @@ func HttpGetUrlValues(httpUrl string, query url.Values, customHead map[string]an
 		}
 	}
 
+	debugHelperF := func() string {
+		curlFullReq := "curl --location --request GET '" + urlFull + "' \\\n"
+		for k := range reqHttp.Header {
+			curlFullReq += fmt.Sprintf("--header '%s: %v' \\\n", k, reqHttp.Header.Get(k))
+		}
+		return curlFullReq
+	}
+
 	//处理返回结果 10秒超时
 	cli := http.Client{Timeout: timeout}
 	response, err := cli.Do(reqHttp)
 	//response, err := http.DefaultClient.Do(reqHttp)
 	if err != nil {
-		W("HttpGetUrlValues do url=%s,err=%s", urlFull, err)
+		W("HttpGetUrlValues\n%s\n,err=%s", debugHelperF(), err)
 		return "", err
 	}
 	bs, err := io.ReadAll(response.Body)
 	_ = response.Body.Close()
 	if err != nil {
-		W("HttpGetUrlValues read url=%s,err=%s", urlFull, err)
+		W("HttpGetUrlValues\n%s\n,err=%s", debugHelperF(), err)
 		return "", err
 	}
 
 	if response.StatusCode != 200 {
-		W("HttpGetUrlValues http(%d) url=%s", response.StatusCode, urlFull)
+		W("HttpGetUrlValues http(%d)\n%s\n", response.StatusCode, debugHelperF())
 	}
 
 	result := string(bs)
 	if debugHttpReq {
-		curlFullReq := "curl --location --request GET '" + urlFull + "' \\\n"
-		for k := range reqHttp.Header {
-			curlFullReq += fmt.Sprintf("--header '%s: %v' \\\n", k, reqHttp.Header.Get(k))
-		}
-		fmt.Printf("HttpGetUrlValues\n%s\nresult=[%s]\n", urlFull, result) //只在控制台打印一下。
+		fmt.Printf("HttpGetUrlValues\n%s\nresult=[%s]\n", debugHelperF(), result) //只在控制台打印一下。
 	}
 	return result, nil
 }
@@ -300,28 +304,33 @@ func HttpPostWithQuery(strURL, body string, heads map[string]any, query url.Valu
 			req.Header.Add(k, fmt.Sprintf("%v", heads[k]))
 		}
 	}
-	//10s超时
-	cli := http.Client{Timeout: timeout}
-	resp, err := cli.Do(req)
-	if err != nil {
-		W("HttpPostWithQuery do url=%s,body=%s,heads=%+v,err=%v", strURL, body, heads, err)
-		return "", err
-	}
-	respBodyBytes, err := io.ReadAll(resp.Body)
-	_ = resp.Body.Close()
-	if err != nil {
-		W("HttpPostWithQuery read url=%s,body=%s,heads=%+v,err=%v", strURL, body, heads, err)
-		return "", err
-	}
-	//控制台打印一下。
-	if debugHttpReq {
+
+	debugHelperF := func() string {
 		curlFullReq := "curl --location --request POST '" + urlFull + "' \\\n"
 		for k := range req.Header {
 			curlFullReq += fmt.Sprintf("--header '%s: %v' \\\n", k, req.Header.Get(k))
 		}
 		//curlFullReq += "--header 'Content-Type: application/json' \\\n"
 		curlFullReq += fmt.Sprintf("--data-raw '%s'", body)
-		fmt.Printf("HttpPostWithQuery\n%s\nresult=[%s]\n", curlFullReq, string(respBodyBytes))
+		return curlFullReq
+	}
+
+	//10s超时
+	cli := http.Client{Timeout: timeout}
+	resp, err := cli.Do(req)
+	if err != nil {
+		W("HttpPostWithQuery\n%s\nerr=%v", debugHelperF(), err)
+		return "", err
+	}
+	respBodyBytes, err := io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+	if err != nil {
+		W("HttpPostWithQuery\n%s\n,err=%v", debugHelperF(), err)
+		return "", err
+	}
+	//控制台打印一下。
+	if debugHttpReq {
+		fmt.Printf("HttpPostWithQuery\n%s\nresult=[%s]\n", debugHelperF(), string(respBodyBytes))
 
 	}
 	return string(respBodyBytes), nil
