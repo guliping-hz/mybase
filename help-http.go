@@ -227,7 +227,7 @@ func HttpGetUrlValues(httpUrl string, query url.Values, customHead map[string]an
 	if debugHttpReq {
 		curlFullReq := "curl --location --request GET '" + urlFull + "' \\\n"
 		for k := range reqHttp.Header {
-			curlFullReq += fmt.Sprintf("--header '%s: %v' \\\n", k, reqHttp.Header[k])
+			curlFullReq += fmt.Sprintf("--header '%s: %v' \\\n", k, reqHttp.Header.Get(k))
 		}
 		fmt.Printf("HttpGetUrlValues\n%s\nresult=[%s]\n", urlFull, result) //只在控制台打印一下。
 	}
@@ -316,10 +316,10 @@ func HttpPostWithQuery(strURL, body string, heads map[string]any, query url.Valu
 	//控制台打印一下。
 	if debugHttpReq {
 		curlFullReq := "curl --location --request POST '" + urlFull + "' \\\n"
-		for k := range heads {
-			curlFullReq += fmt.Sprintf("--header '%s: %v' \\\n", k, heads[k])
+		for k := range req.Header {
+			curlFullReq += fmt.Sprintf("--header '%s: %v' \\\n", k, req.Header.Get(k))
 		}
-		curlFullReq += "--header 'Content-Type: application/json' \\\n"
+		//curlFullReq += "--header 'Content-Type: application/json' \\\n"
 		curlFullReq += fmt.Sprintf("--data-raw '%s'", body)
 		fmt.Printf("HttpPostWithQuery\n%s\nresult=[%s]\n", curlFullReq, string(respBodyBytes))
 
