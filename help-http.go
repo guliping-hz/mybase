@@ -66,6 +66,10 @@ func OnDebugHttpReq() {
 	debugHttpReq = true
 }
 
+func OnDebugHttpReqClose() {
+	debugHttpReq = false
+}
+
 // 设置http请求超时时间，默认10s
 func SetDefaultHttpTimeout(t time.Duration) {
 	timeout = t
