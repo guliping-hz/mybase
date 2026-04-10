@@ -915,6 +915,10 @@ class Setup(BaseSetup):
             self.remote_exec(
                 f"sudo mv {self.dir}/{self.exe} {self.dir}/back/{self.exe}.{int(time.time())}.bak"
             )
+            # 只保留最近的3个备份文件，删掉多余的。
+            self.remote_exec(
+                f"cd {self.dir}/back && ls -t | tail -n +4 | xargs rm -rf"
+            )
 
         # 上传文件
         if self.shellOn:
