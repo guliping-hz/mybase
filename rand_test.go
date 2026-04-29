@@ -12,8 +12,8 @@ func TestFloat(t *testing.T) {
 	less01 := 0
 	less00001 := 0
 	for i := 0; i < 1000000; i++ {
-		c := float64(myR.Int63()) / float64((1<<63)-1)
-		//c := myR.Float64()
+		//c := float64(myR.Int63()) / float64((1<<63)-1)
+		c := myR.Float64()
 		if c < 0.5 {
 			less05++
 
