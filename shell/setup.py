@@ -656,9 +656,10 @@ class BtApi:
             return json.loads(result)
         return None
 
-    def set_task_conf(self, templateId, taskData, taskId=None):
+    def set_task_conf(self, templateId, taskData, taskId=None, status=1):
         url = self.__BT_PANEL + "/mod/push/task/set_task_conf"
         param = self.__get_key_data()  # 取签名
+        param["status"] = status
         param["template_id"] = templateId
         param["task_data"] = taskData
         if taskId:
@@ -675,6 +676,32 @@ class BtApi:
         param["rows"] = rows
         param["status"] = status
         param["keyword"] = keyword
+        result = http_with_cookie(url, param, 1800)
+        if result:
+            return json.loads(result)
+        return None
+
+    # 关闭mysql停止通知
+    def change_task_conf(self, taskId):
+        url = self.__BT_PANEL + "/mod/push/task/change_task_conf"
+        param = self.__get_key_data()  # 取签名
+        param["status"] = 0
+        param["task_data"] = taskData
+        param["task_id"] = taskId
+        result = http_with_cookie(url, param, 1800)
+        if result:
+            return json.loads(result)
+        return None
+
+    # 开启mysql停止通知
+    def update_task_status(self, templateId, status, taskData, title, taskId):
+        url = self.__BT_PANEL + "/mod/push/task/update_task_status"
+        param = self.__get_key_data()  # 取签名
+        param["template_id"] = templateId
+        param["status"] = status
+        param["task_data"] = taskData
+        param["task_id"] = taskId
+        param["title"] = title
         result = http_with_cookie(url, param, 1800)
         if result:
             return json.loads(result)
@@ -916,9 +943,7 @@ class Setup(BaseSetup):
                 f"sudo mv {self.dir}/{self.exe} {self.dir}/back/{self.exe}.{int(time.time())}.bak"
             )
             # 只保留最近的3个备份文件，删掉多余的。
-            self.remote_exec(
-                f"cd {self.dir}/back && ls -t | tail -n +4 | xargs rm -rf"
-            )
+            self.remote_exec(f"cd {self.dir}/back && ls -t | tail -n +4 | xargs rm -rf")
 
         # 上传文件
         if self.shellOn:
