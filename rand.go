@@ -17,15 +17,7 @@ func (m *MyRand) Seed(seed int64) {
 	m.seed = uint64(seed)
 }
 
-func (m *MyRand) Uint32() uint32 {
-	return uint32(m.Float64() * float64(0xFFFFFFFF))
-}
-
-func (m *MyRand) Int63() int64 {
-	return int64(math.Floor(m.Float64() * float64(0x7FFFFFFFFFFFFFFF)))
-}
-
-func (m *MyRand) Int31() int32 {
+func (m *MyRand) int31() int32 {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -33,21 +25,34 @@ func (m *MyRand) Int31() int32 {
 	return int32(m.seed)
 }
 
-func (m *MyRand) Intn(n int) int {
-	return int(m.Int31() % int32(n))
-}
-
 func (m *MyRand) Float64() float64 {
 again:
-	f := float64(m.Int31()) / 2147483647.0
+	f := float64(m.int31()) / 2147483647.0
 	if f == 1 {
 		goto again // resample; this branch is taken O(never)
 	}
 	return f
 }
 
+func (m *MyRand) Int63() int64 {
+	return int64(math.Floor(m.Float64() * float64(0x7FFFFFFFFFFFFFFF)))
+}
+
+func (m *MyRand) Intn(n int) int {
+	return int(m.Int63() % int64(n))
+}
+
+func (m *MyRand) Int31(n int32) int32 {
+	return int32(m.Int63() % int64(n))
+}
+
 func (m *MyRand) Float32() float32 {
-	return float32(m.Float64())
+again:
+	f := float32(m.Float64())
+	if f == 1 {
+		goto again // resample; this branch is taken O(very rarely)
+	}
+	return f
 }
 
 func NewMyRand() *MyRand {

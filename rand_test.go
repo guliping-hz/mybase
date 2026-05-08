@@ -6,6 +6,54 @@ import (
 	"testing"
 )
 
+func TestRandInt63(t *testing.T) {
+	myR := NewMyRand()
+	total := 1000000
+	cnt := 0
+	for i := 0; i < total; i++ {
+		if myR.Int63()%100000000 < 50000000 {
+			cnt++
+		}
+	}
+	t.Logf("total: %d, cnt: %d %f", total, cnt, float64(cnt)/float64(total))
+}
+
+func TestRandInt32(t *testing.T) {
+	myR := NewMyRand()
+	total := 1000000
+	cnt := 0
+	for i := 0; i < total; i++ {
+		if myR.Int31(100000000) < 50000000 {
+			cnt++
+		}
+	}
+	t.Logf("total: %d, cnt: %d %f", total, cnt, float64(cnt)/float64(total))
+}
+
+func TestRandIntn(t *testing.T) {
+	myR := NewMyRand()
+	total := 1000000
+	cnt := 0
+	for i := 0; i < total; i++ {
+		if myR.Intn(100000000) < 50000000 {
+			cnt++
+		}
+	}
+	t.Logf("total: %d, cnt: %d %f", total, cnt, float64(cnt)/float64(total))
+}
+
+func TestRandFloat32(t *testing.T) {
+	myR := NewMyRand()
+	total := 1000000
+	cnt := 0
+	for i := 0; i < total; i++ {
+		if myR.Float32() < 0.5 {
+			cnt++
+		}
+	}
+	t.Logf("total: %d, cnt: %d %f", total, cnt, float64(cnt)/float64(total))
+}
+
 func TestFloat(t *testing.T) {
 	myR := NewMyRand()
 	less05 := 0
