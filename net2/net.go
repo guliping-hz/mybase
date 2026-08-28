@@ -3,6 +3,7 @@ package net2
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net"
@@ -428,6 +429,11 @@ func recvRoutine(ctx *Context, fErr func(error, []byte, bool), fTimeout func()) 
 	defer func() {
 		p := recover()
 		if err, ok := p.(error); ok {
+			log.Printf("CloseWithErr err=%s\n", err)
+			//异常报错导致的断开连接。。。
+			fErr(err, debug.Stack(), true)
+		} else if p != nil {
+			err = fmt.Errorf("err:%s", p)
 			log.Printf("CloseWithErr err=%s\n", err)
 			//异常报错导致的断开连接。。。
 			fErr(err, debug.Stack(), true)
