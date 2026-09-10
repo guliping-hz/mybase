@@ -967,7 +967,11 @@ class Setup(BaseSetup):
                 os.remove(thePath)
 
         if self.shellStart != "":
-            if not self.remote_put(self.shellStart, self.dir):  # + "/start.sh"
+            if not self.remote_put(self.shellStart, self.dir):
+                return False
+            if not self.remote_exec(
+                f"mv {self.dir}/{self.shellStart} {self.dir}/start.sh && chmod +xxx {self.dir}/start.sh"
+            ):
                 return False
 
         for i in range(0, len(self.envs), 3):
