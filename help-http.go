@@ -58,16 +58,27 @@ const (
 	WGErrorExtBegin            = 1000 //扩展错误码起始
 )
 
-var debugHttpReq = false
-var timeout time.Duration = time.Second * 10
+type DebugHttpReqCallback func(reqCurl string, result string)
+
+var debugHttpReq DebugHttpReqCallback
+var timeout = time.Second * 10
+var defaultPrintF = func(reqCurl string, result string) {
+	fmt.Printf("Http:\n%s\nresult=[%s]\n", reqCurl, result) //只在控制台打印一下。
+}
 
 // 开启调试
 func OnDebugHttpReq() {
-	debugHttpReq = true
+	debugHttpReq = defaultPrintF
 }
 
+// 关闭调试打印
 func OnDebugHttpReqClose() {
-	debugHttpReq = false
+	debugHttpReq = nil
+}
+
+// 自定义打印函数
+func SetDebugHttpReqCallback(callback DebugHttpReqCallback) {
+	debugHttpReq = callback
 }
 
 // 设置http请求超时时间，默认10s
@@ -236,8 +247,8 @@ func HttpGetUrlValues(httpUrl string, query url.Values, customHead map[string]an
 	}
 
 	result := string(bs)
-	if debugHttpReq {
-		fmt.Printf("HttpGetUrlValues\n%s\nresult=[%s]\n", debugHelperF(), result) //只在控制台打印一下。
+	if debugHttpReq != nil {
+		debugHttpReq(debugHelperF(), result)
 	}
 	return result, nil
 }
@@ -332,12 +343,12 @@ func HttpPostWithQuery(strURL, body string, heads map[string]any, query url.Valu
 		W("HttpPostWithQuery\n%s\n,err=%v", debugHelperF(), err)
 		return "", err
 	}
-	//控制台打印一下。
-	if debugHttpReq {
-		fmt.Printf("HttpPostWithQuery\n%s\nresult=[%s]\n", debugHelperF(), string(respBodyBytes))
 
+	result := string(respBodyBytes)
+	if debugHttpReq != nil {
+		debugHttpReq(debugHelperF(), result)
 	}
-	return string(respBodyBytes), nil
+	return result, nil
 }
 
 func SortParam(param map[string]any) string {
