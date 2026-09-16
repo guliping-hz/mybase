@@ -7,8 +7,12 @@ sudo chmod +xxx "$(pwd)/exeNameReplace"
 #exe后面带上 & 防止关闭终端，就把go进程结束掉;而且必须以shell脚本的形式启动 & 才能起作用。
 #直接在终端中敲下面的命令关掉终端，进程还是结束了。。
 
-#捕获崩溃异常，dlv
+# 文件描述符上限：65535（解决 Socket Error）
+ulimit -n 65535
+
+#捕获崩溃异常，dlv core 文件大小：不限（保证 core 能生成）
 ulimit -c unlimited
+
 export GOTRACEBACK=crash
 
 #多个服务只是目录的不同

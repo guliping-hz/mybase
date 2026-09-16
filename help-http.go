@@ -81,9 +81,20 @@ func SetDebugHttpReqCallback(callback DebugHttpReqCallback) {
 	debugHttpReq = callback
 }
 
+var transport *http.Transport
+
+func doReq(req *http.Request) (*http.Response, error) {
+	cli := http.Client{Timeout: timeout, Transport: transport}
+	return cli.Do(req)
+}
+
 // 设置http请求超时时间，默认10s
 func SetDefaultHttpTimeout(t time.Duration) {
 	timeout = t
+}
+
+func SetDefaultHttpTransport(t *http.Transport) {
+	transport = t
 }
 
 type HttpResult struct {
@@ -201,7 +212,7 @@ func HttpGetUrlValues(httpUrl string, query url.Values, customHead map[string]an
 	}
 
 	//提交请求
-	reqHttp, err := http.NewRequest("GET", urlFull, nil)
+	req, err := http.NewRequest("GET", urlFull, nil)
 	if err != nil {
 		W("HttpGetUrlValues new url=%s,err=%s", urlFull, err)
 		return "", err
@@ -209,27 +220,25 @@ func HttpGetUrlValues(httpUrl string, query url.Values, customHead map[string]an
 
 	if needSign {
 		//增加header选项
-		reqHttp.Header.Set("curtime", curTimeStr)
-		reqHttp.Header.Set("nonce", nonce)
+		req.Header.Set("curtime", curTimeStr)
+		req.Header.Set("nonce", nonce)
 	}
 
 	if customHead != nil {
 		for k := range customHead {
-			reqHttp.Header.Set(k, fmt.Sprintf("%v", customHead[k]))
+			req.Header.Set(k, fmt.Sprintf("%v", customHead[k]))
 		}
 	}
 
 	debugHelperF := func() string {
 		curlFullReq := "curl --location --request GET '" + urlFull + "' \\\n"
-		for k := range reqHttp.Header {
-			curlFullReq += fmt.Sprintf("--header '%s: %v' \\\n", k, reqHttp.Header.Get(k))
+		for k := range req.Header {
+			curlFullReq += fmt.Sprintf("--header '%s: %v' \\\n", k, req.Header.Get(k))
 		}
 		return curlFullReq
 	}
 
-	//处理返回结果 10秒超时
-	cli := http.Client{Timeout: timeout}
-	response, err := cli.Do(reqHttp)
+	response, err := doReq(req)
 	//response, err := http.DefaultClient.Do(reqHttp)
 	if err != nil {
 		W("HttpGetUrlValues\n%s\n,err=%s", debugHelperF(), err)
@@ -330,9 +339,7 @@ func HttpPostWithQuery(strURL, body string, heads map[string]any, query url.Valu
 		return curlFullReq
 	}
 
-	//10s超时
-	cli := http.Client{Timeout: timeout}
-	resp, err := cli.Do(req)
+	resp, err := doReq(req)
 	if err != nil {
 		W("HttpPostWithQuery\n%s\nerr=%v", debugHelperF(), err)
 		return "", err
