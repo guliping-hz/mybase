@@ -755,14 +755,6 @@ class BaseSetup:
             self.socksPort,
         )
 
-    def get_acme(hostName: str) -> str:
-        return f"""
-/root/.acme.sh/acme.sh --install-cert -d {hostName} \
---key-file /root/cert/{hostName}/key.pem  \
---fullchain-file /root/cert/{hostName}/cert.pem \
---reloadcmd "nginx -s reload"
-"""
-
     def get_start() -> str:
         return """#!/bin/bash
 
@@ -773,8 +765,12 @@ sudo chmod +xxx "$(pwd)/exeNameReplace"
 #exe后面带上 & 防止关闭终端，就把go进程结束掉;而且必须以shell脚本的形式启动 & 才能起作用。
 #直接在终端中敲下面的命令关掉终端，进程还是结束了。。
 
-#捕获崩溃异常，dlv
+# 文件描述符上限：65535
+ulimit -n 65535
+
+#捕获崩溃异常，dlv core 文件大小：不限（保证 core 能生成）
 ulimit -c unlimited
+
 export GOTRACEBACK=crash
 
 #多个服务只是目录的不同
@@ -1171,7 +1167,6 @@ def test():
     # remote_exec("127.0.0.1", "ls -l")
     # remote_exec("127.0.0.1", "pwd")
     # cwd = os.getcwd()  # 获取当前目录
-    # s = BaseSetup.get_acme("www.baidu.com")
     # print(s)
     # remote_exec("127.0.0.1", f"echo '{s}' > /root/acme.test.sh")
     # remote_put("127.0.0.1", cwd + "/../auth/cfg/yqw2.json", "/opt/auth/auth.json")
@@ -1183,5 +1178,3 @@ if __name__ == "__main__":
     # test()
     # print(__file__, os.path.dirname(__file__)
     parse_to_setup()
-
-    # print(BaseSetup.get_acme("1.cn"))
