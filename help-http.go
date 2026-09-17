@@ -84,7 +84,10 @@ func SetDebugHttpReqCallback(callback DebugHttpReqCallback) {
 var transport *http.Transport
 
 func doReq(req *http.Request) (*http.Response, error) {
-	cli := http.Client{Timeout: timeout, Transport: transport}
+	cli := http.Client{Timeout: timeout}
+	if transport != nil {
+		cli.Transport = transport
+	}
 	return cli.Do(req)
 }
 
