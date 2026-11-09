@@ -21,7 +21,7 @@ func (m *MyRand) int31() int32 {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
-	m.seed = (48271*m.seed + 1) % 0x7FFFFFFF //2147483647
+	m.seed = (48271*m.seed + 1) % 0x7FFFFFFF //2147483647 0x7FFFFFFF
 	return int32(m.seed)
 }
 
@@ -39,11 +39,12 @@ func (m *MyRand) Int63() int64 {
 }
 
 func (m *MyRand) Intn(n int) int {
-	return int(m.Int63() % int64(n))
+	return int(m.Int31(int32(n)))
 }
 
+// 100w及以上的n建议使用Int63()
 func (m *MyRand) Int31(n int32) int32 {
-	return int32(m.Int63() % int64(n))
+	return m.int31() % n
 }
 
 func (m *MyRand) Float32() float32 {
