@@ -4,13 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/go-redis/redis/v8"
-	"github.com/mohae/deepcopy"
-	"github.com/robfig/cron/v3"
-	"gorm.io/driver/mysql"
-	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
-	"gorm.io/gorm/schema"
 	"log"
 	"os"
 	"reflect"
@@ -19,6 +12,14 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/go-redis/redis/v8"
+	"github.com/mohae/deepcopy"
+	"github.com/robfig/cron/v3"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
+	"gorm.io/gorm/schema"
 )
 
 const (
@@ -105,7 +106,10 @@ type DBMgrBase struct {
 	chanSignal chan bool
 }
 
-func (d *DBMgrBase) Init(ctx context.Context, maxDBCon int, config *gorm.Config, batchTag string, reloadF func(), dst ...any) error {
+/*
+*@spec 可以为空，默认每2分钟插入数据
+ */
+func (d *DBMgrBase) Init(ctx context.Context, maxDBCon int, config *gorm.Config, batchTag, spec string, reloadF func(), dst ...any) error {
 	var err error
 	dsn := os.Getenv("db_dsn")
 
@@ -200,7 +204,11 @@ func (d *DBMgrBase) Init(ctx context.Context, maxDBCon int, config *gorm.Config,
 	d.patchSqlCtx, ctxCancelF = context.WithCancel(context.Background())
 	d.patchSqlDict = make(map[string]*PatchInsert)
 	d.c = cron.New(cron.WithSeconds())
-	d.c.AddFunc("0 */2 * * * *", func() {
+
+	if spec == "" {
+		spec = "0 */2 * * * *"
+	}
+	d.c.AddFunc(spec, func() {
 		d.patchInsertAll("")
 	})
 	d.c.Start()
